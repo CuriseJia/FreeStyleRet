@@ -1,0 +1,41 @@
+# ~/.gitignore_global
+# Symlinked into ~/ as .gitignore
+*.pth
+
+# Compiled source
+*.dll
+*.exe
+
+# Packages/ Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.tar
+*.zip
+*.pkg
+
+# Databases
+*.sql
+*.sqlite
+
+# Logs
+*.log
+
+# project files
+.idea/
+.vscode/
+*__pycache__*
+*.pyc
+__pycache__/
+
+# OS generated files
+**/*.app
+**/CmakeCache.txt
+**/build/*
+**/CmakeFiles/*
+**/.DS_Store
+.DS_Store
+**/.Spotlight-V100
+**/.Trashes
+**/Thumbs.db
