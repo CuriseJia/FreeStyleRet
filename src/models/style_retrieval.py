@@ -33,10 +33,14 @@ class StyleRetrieval(nn.Module):
         self.transformer_layer = nn.Sequential(*list(self.openclip.visual.children())[4:])
         self.prompt = nn.Parameter(torch.randn(
             self.model_args.n_prompts, self.model_args.prompt_dim))
-        self.style_encoder = VGG.load_state_dict(torch.load(self.model_args.style_encoder_path))
+        self.style_encoder = VGG
+        self.style_encoder.load_state_dict(torch.load(self.model_args.style_encoder_path))
+        self.style_encoder.apply(freeze_model)
+        self.style_patch = nn.Conv2d(128, 256, 8, 8)
         self.style_linear = nn.Sequential(
-                                nn.Linear(128, 512),
-                                nn.Linear(512, model_args.prompt_dim))
+                                nn.Linear(256, 512),
+                                nn.Linear(512, 1024),
+                                nn.Linear(1024, model_args.prompt_dim))
         # loss
         self.triplet_loss = nn.TripletMarginWithDistanceLoss(
             distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
@@ -65,7 +69,9 @@ class StyleRetrieval(nn.Module):
 
     def get_prompt(self, input):
         latent_feature = self.get_features(input, self.style_encoder)
-        prompt_feature = self.style_linear(latent_feature)
+        embed = self.style_patch(latent_feature['conv3_1'])
+        # print(embed.shape)
+        prompt_feature = self.style_linear(embed.view(256, -1).permute(1, 0))
 
         return prompt_feature
     
@@ -74,6 +80,7 @@ class StyleRetrieval(nn.Module):
         if dtype == 'image': 
             embed = self.embedding_layer(data)
             embed = embed.flatten(2).transpose(-1, -2)
+            self.prompt = self.get_prompt(data)
             embed = torch.cat((
                 self.prompt.expand(data.shape[0],-1,-1),
                 embed,

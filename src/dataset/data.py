@@ -12,8 +12,19 @@ class StyleDataset(Dataset):
         self.dataset = json.load(open(json_path,'r'))
         self.image_transform = image_transform
     
+
     def __len__(self):
         return len(self.dataset)
     
+    
     def __getitem__(self, index):
-        return 
+        caption_path = os.path.join(self.root_path, self.dataset[index]['caption'])
+        image_path = os.path.join(self.root_path, self.dataset[index]['image'])
+        negative_path = os.path.join(self.root_path, self.dataset[np.random.randint(1, len(self.dataset))]['image'])
+        
+        f = open(caption_path, 'r')
+        caption = f.readline().replace('\n', '')
+        pair_image = self.image_transform(Image.open(image_path))
+        negative_image = self.image_transform(Image.open(negative_path))
+
+        return [caption, pair_image, negative_image]
