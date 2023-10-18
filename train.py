@@ -15,10 +15,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
 
     # project settings
-    parser.add_argument('--output_dir', default='/public/home/jiayanhao/SMR/output/')
-    parser.add_argument('--out_path', default='origin-mosaic-loss.jpg')
+    parser.add_argument('--output_dir', default='output/')
+    parser.add_argument('--out_path', default='origin-text-loss.jpg')
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
-    parser.add_argument('--device', default='cuda:3')
+    parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
+    parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
@@ -28,16 +29,15 @@ def parse_args():
 
     # data settings
     parser.add_argument("--type", type=str, default='image2text', help='choose train image2text or image2image.')
-    parser.add_argument("--train_ori_dataset_path", type=str, default='/public/home/jiayanhao/imagenet/train/')
-    parser.add_argument("--train_art_dataset_path", type=str, default='/public/home/jiayanhao/imagenet/imagenet-p/train/')
-    parser.add_argument("--train_json_path", type=str, default='/public/home/jiayanhao/imagenet/200-original-sketch-0-10.json')
+    parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
+    parser.add_argument("--train_json_path", type=str, default='fscoco/dataset.json')
     parser.add_argument("--train_batch_size", type=int, default=24)
     parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
     parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
-    parser.add_argument('--n_prompts', type=int, default=3)
-    parser.add_argument('--prompt_dim', type=int, default=50176)
+    parser.add_argument('--n_prompts', type=int, default=49)
+    parser.add_argument('--prompt_dim', type=int, default=1024)
 
     # optimizer settings
     parser.add_argument('--clip_ln_lr', type=float, default=1e-4)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
-            {'params': [model.img_prompt], 'lr': args.prompt_lr}])
+            {'params': [model.prompt], 'lr': args.prompt_lr}])
 
     train_loader = DataLoader(dataset=train_dataset, 
                             batch_size=args.train_batch_size,

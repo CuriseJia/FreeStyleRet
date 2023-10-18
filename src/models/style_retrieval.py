@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from vgg import VGG
+from .vgg import VGG
 
 
 def freeze_model(m):
@@ -30,13 +30,14 @@ class StyleRetrieval(nn.Module):
         self.openclip.apply(freeze_all_but_bn)
         # Prompt Token
         self.embedding_layer = nn.Sequential(*list(self.openclip.visual.children())[:3])
-        self.transformer_layer = nn.Sequential(*list(self.openclip.visual.children())[4:])
+        self.transformer_layer = list(self.openclip.visual.children())[4]
+        self.ln_post = list(self.openclip.visual.children())[5]
         self.prompt = nn.Parameter(torch.randn(
             self.model_args.n_prompts, self.model_args.prompt_dim))
         self.style_encoder = VGG
         self.style_encoder.load_state_dict(torch.load(self.model_args.style_encoder_path))
         self.style_encoder.apply(freeze_model)
-        self.style_patch = nn.Conv2d(128, 256, 8, 8)
+        self.style_patch = nn.Conv2d(128, 256, 16, 16)
         self.style_linear = nn.Sequential(
                                 nn.Linear(256, 512),
                                 nn.Linear(512, 1024),
@@ -47,7 +48,7 @@ class StyleRetrieval(nn.Module):
             margin=1)
         
 
-    def get_features(image, model, layers=None):
+    def get_features(self, image, model, layers=None):
         if layers is None:
             layers = {'0': 'conv1_1',  
                     '5': 'conv2_1',  
@@ -80,12 +81,15 @@ class StyleRetrieval(nn.Module):
         if dtype == 'image': 
             embed = self.embedding_layer(data)
             embed = embed.flatten(2).transpose(-1, -2)
-            self.prompt = self.get_prompt(data)
+            self.prompt.parameter = self.get_prompt(data)
             embed = torch.cat((
                 self.prompt.expand(data.shape[0],-1,-1),
                 embed,
             ), dim=1)
             feat = self.transformer_layer(embed)
+            feat, _ = self.openclip.visual._global_pool(feat)
+            feat = self.ln_post(feat)
+            feat = feat @ self.openclip.visual.proj
 
         elif dtype == 'text':
             feat = self.openclip.encode_text(data)

@@ -18,9 +18,9 @@ class StyleDataset(Dataset):
     
     
     def __getitem__(self, index):
-        caption_path = os.path.join(self.root_path, self.dataset[index]['caption'])
-        image_path = os.path.join(self.root_path, self.dataset[index]['image'])
-        negative_path = os.path.join(self.root_path, self.dataset[np.random.randint(1, len(self.dataset))]['image'])
+        caption_path = os.path.join(self.root_path, 'text/'+self.dataset[index]['caption'])
+        image_path = os.path.join(self.root_path, 'images/'+self.dataset[index]['image'])
+        negative_path = os.path.join(self.root_path, 'images/'+self.dataset[np.random.randint(1, len(self.dataset))]['image'])
         
         f = open(caption_path, 'r')
         caption = f.readline().replace('\n', '')
