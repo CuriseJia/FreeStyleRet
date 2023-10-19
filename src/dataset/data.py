@@ -46,12 +46,12 @@ class StyleI2IDataset(Dataset):
     
     def __getitem__(self, index):
         ori_path = os.path.join(self.root_path, 'images/'+self.dataset[index]['image'])
-        rand = np.random.randint(1,3)
+        rand = np.random.randint(1,4)
         if rand == 1:
             pair_path = os.path.join(self.root_path, 'sketch/'+self.dataset[index]['image'])
         elif rand == 2:
             pair_path = os.path.join(self.root_path, 'art/'+self.dataset[index]['image'])
-        else:
+        elif rand == 3:
             pair_path = os.path.join(self.root_path, 'mosaic/'+self.dataset[index]['image'])
 
         neg = np.random.randint(1, len(self.dataset))

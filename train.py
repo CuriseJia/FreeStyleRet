@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from src.models.style_retrieval import StyleRetrieval
-from src.dataset.data import StyleDataset
+from src.dataset.data import StyleI2IDataset, StyleT2IDataset
 from src.utils.utils import setup_seed, save_loss, getI2TR1Accuary, getI2IR1Accuary
 
 def parse_args():
@@ -32,11 +32,11 @@ def parse_args():
     parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--train_json_path", type=str, default='fscoco/dataset.json')
     parser.add_argument("--train_batch_size", type=int, default=24)
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=5)
 
     # model settings
     parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
-    parser.add_argument('--n_prompts', type=int, default=49)
+    parser.add_argument('--n_prompts', type=int, default=4)
     parser.add_argument('--prompt_dim', type=int, default=1024)
 
     # optimizer settings
@@ -67,19 +67,15 @@ def train(args, model, device, dataloader, optimizer):
                 image = data[1][1].to(device, non_blocking=True)
                 negative_image = data[1][2].to(device, non_blocking=True)
 
-                image_feature = model(image, dtype='image')
                 text_feature = model(caption, dtype='text')
+                image_feature = model(image, dtype='image')
                 negative_feature = model(negative_image, dtype='image')
 
-                loss = model.triplet_loss(image_feature, text_feature, negative_feature)
+                loss = model.get_loss(original_feature, retrival_feature, negative_feature, optimizer)
 
-                temp_loss.append(loss.detach().cpu().numpy())
+                temp_loss.append(loss)
 
                 print("loss: {:.6f}".format(loss))
-
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
 
             if len(temp_loss)!=0:
                 res = round(sum(temp_loss)/len(temp_loss), 6)
@@ -115,6 +111,8 @@ def train(args, model, device, dataloader, optimizer):
                 loss = model.get_loss(original_feature, retrival_feature, negative_feature, optimizer)
 
                 temp_loss.append(loss)
+
+                print("loss: {:.6f}".format(loss))
             
             if len(temp_loss)!=0:
                 res = round(sum(temp_loss)/len(temp_loss), 6)
@@ -125,7 +123,7 @@ def train(args, model, device, dataloader, optimizer):
             if res<best_loss:
                 best_loss = res
                 save_obj = model.state_dict()
-                torch.save(save_obj, os.path.join(args.output_dir, 'i2m_epoch{}.pth'.format(epoch)))
+                torch.save(save_obj, os.path.join(args.output_dir, 'i2i_epoch{}.pth'.format(epoch)))
                 count = 0
             else:
                 count +=1
@@ -145,7 +143,8 @@ if __name__ == "__main__":
     model = model.to(device)
     # model.load_state_dict(torch.load(args.resume))
 
-    train_dataset = StyleDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train, model.tokenizer)
+    train_dataset = StyleT2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
+    train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},

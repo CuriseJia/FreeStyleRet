@@ -13,22 +13,21 @@ def mosaic2(image_path, out_path, step=16):
 
 
 if __name__ == '__main__':
-    # img = cv2.imread('imagenet/val/n01491361/ILSVRC2012_val_00002969.JPEG', 1)
-    # temp = mosaic2(img)
-    
     root_path = 'fscoco/'
-    folderlist = os.listdir(root_path)
-    if os.path.exists(root_path + '/mosaic/'):
+    folderlist = os.listdir(root_path+'images')
+    if os.path.exists(root_path + 'mosaic/'):
         pass
     else:
-        os.mkdir(root_path + '/mosaic/')
+        os.mkdir(root_path + 'mosaic/')
 
-    for folder in folderlist:
+    for folder in tqdm(folderlist):
         # os.mkdir(root_path + '/mosaic/{}'.format(folder))
-        filelist = os.listdir(root_path + '/images/{}'.format(folder))
+        filelist = os.listdir(root_path + 'images/{}'.format(folder))
 
         for file in tqdm(filelist):
-            image_path = root_path + '/images/{0}/{1}'.format(folder, file)
-            mosaic_path = root_path + '/mosaic/{0}/{1}'.format(folder, file)
+            image_path = root_path + 'images/{0}/{1}'.format(folder, file)
+            mosaic_path = root_path + 'mosaic/{0}/{1}'.format(folder, file)
 
             mosaic2(image_path, mosaic_path)
+
+    print('finish.')
