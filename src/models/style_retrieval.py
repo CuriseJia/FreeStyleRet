@@ -28,16 +28,18 @@ class StyleRetrieval(nn.Module):
         )
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
+        self.visual = self.openclip.visual
         # Prompt Token
-        self.embedding_layer = nn.Sequential(*list(self.openclip.visual.children())[:3])
-        self.transformer_layer = list(self.openclip.visual.children())[4]
-        self.ln_post = list(self.openclip.visual.children())[5]
         self.prompt = nn.Parameter(torch.randn(
             self.model_args.n_prompts, self.model_args.prompt_dim))
         self.style_encoder = VGG
         self.style_encoder.load_state_dict(torch.load(self.model_args.style_encoder_path))
         self.style_encoder.apply(freeze_model)
         self.style_patch = nn.Conv2d(128, 256, 16, 16)
+        self.style_pool = nn.Sequential(
+                                nn.Linear(model_args.train_batch_size*256, 1024),
+                                nn.Linear(1024, 256),
+                                nn.Linear(256, 4))
         self.style_linear = nn.Sequential(
                                 nn.Linear(256, 512),
                                 nn.Linear(512, 1024),
@@ -48,7 +50,15 @@ class StyleRetrieval(nn.Module):
             margin=1)
         
 
-    def get_features(self, image, model, layers=None):
+    def get_loss(self, image_feature, pair_feature, negative_feature, optimizer):
+        loss = self.triplet_loss(image_feature, pair_feature, negative_feature)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        return loss.detach().cpu().numpy()
+        
+
+    def _get_features(self, image, model, layers=None):
         if layers is None:
             layers = {'0': 'conv1_1',  
                     '5': 'conv2_1',  
@@ -68,32 +78,63 @@ class StyleRetrieval(nn.Module):
         return features
     
 
-    def get_prompt(self, input):
-        latent_feature = self.get_features(input, self.style_encoder)
+    def _get_prompt(self, input):
+        latent_feature = self._get_features(input, self.style_encoder)
         embed = self.style_patch(latent_feature['conv3_1'])
-        # print(embed.shape)
-        c, h, w = embed.shape
+        n, c, h, w = embed.shape    # (b, 256, 7, 7)
 
-        features = embed.reshape(c, h * w)
-        features = torch.mm(features, features.T) / c / h / w
-        prompt_feature = self.style_linear(embed.view(c, -1).permute(1, 0))
+        features = embed.reshape(n * c, h * w)  # (b*256, 49)
+        features = torch.mm(features, features.T) / n / c / h / w   # (b*256, b*256)
+        # features = features.view(n, c, -1).permute(0, 2, 1)
+        features = self.style_pool(features.view(n, c, -1))
+        prompt_feature = self.style_linear(features.permute(0, 2, 1))
 
         return prompt_feature
     
 
+    def _visual_forward(self, x):
+        input = x
+        x = self.visual.conv1(x)  # shape = [*, width, grid, grid]
+        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+
+        # class embeddings and positional embeddings
+        x = torch.cat(
+            [self.visual.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device),
+             x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+        x = x + self.visual.positional_embedding.to(x.dtype)
+
+        # a patch_dropout of 0. would mean it is disabled and this function would do nothing but return what was passed in
+        x = self.visual.patch_dropout(x)
+        x = self.visual.ln_pre(x)
+
+        self.prompt.parameter = self._get_prompt(input)
+        x = torch.cat([x[:, 0, :].unsqueeze(1), self.prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
+
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = self.visual.transformer(x)
+        x = x.permute(1, 0, 2)  # LND -> NLD
+
+        # if self.visual.attn_pool is not None:
+        #     x = self.visual.attn_pool(x)
+        #     x = self.visual.ln_post(x)
+        #     pooled, tokens = self.visual._global_pool(x)
+        # else:
+        pooled, tokens = self.visual._global_pool(x)
+        pooled = self.visual.ln_post(pooled)
+
+        if self.visual.proj is not None:
+            pooled = pooled @ self.visual.proj
+
+        # if self.visual.output_tokens:
+        #     return pooled, tokens
+        
+        return pooled
+        
+
     def forward(self, data, dtype='image'):
         if dtype == 'image': 
-            embed = self.embedding_layer(data)
-            embed = embed.flatten(2).transpose(-1, -2)
-            self.prompt.parameter = self.get_prompt(data)
-            embed = torch.cat((
-                self.prompt.expand(data.shape[0],-1,-1),
-                embed,
-            ), dim=1)
-            feat = self.transformer_layer(embed)
-            feat, _ = self.openclip.visual._global_pool(feat)
-            feat = self.ln_post(feat)
-            feat = feat @ self.openclip.visual.proj
+            feat = self._visual_forward(data)
 
         elif dtype == 'text':
             feat = self.openclip.encode_text(data)
