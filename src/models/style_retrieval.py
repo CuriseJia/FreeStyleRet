@@ -72,7 +72,11 @@ class StyleRetrieval(nn.Module):
         latent_feature = self.get_features(input, self.style_encoder)
         embed = self.style_patch(latent_feature['conv3_1'])
         # print(embed.shape)
-        prompt_feature = self.style_linear(embed.view(256, -1).permute(1, 0))
+        c, h, w = embed.shape
+
+        features = embed.reshape(c, h * w)
+        features = torch.mm(features, features.T) / c / h / w
+        prompt_feature = self.style_linear(embed.view(c, -1).permute(1, 0))
 
         return prompt_feature
     
