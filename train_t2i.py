@@ -47,7 +47,6 @@ def parse_args():
     return args
 
 
-
 def train(args, model, device, dataloader, optimizer):
     model.train()
 

@@ -103,14 +103,35 @@ def getR1Accuary(prob):
     acc = count/prob.shape[0]
     return acc
 
-# def getI2IR1Accuary(prob, oric, othc):
-#     temp = prob.detach().cpu().numpy()
-#     ind = np.argsort(temp, axis=1)
-#     count = 0
-#     for i in range(prob.shape[0]):
-#         if oric[ind[i][prob.shape[1]-1]] == othc[ind[i][prob.shape[1]-1]]:
-#             count+=1
-#         elif oric[ind[i][prob.shape[1]-1]] != othc[ind[i][prob.shape[1]-1]] and temp[i][ind[i][prob.shape[1]-1]]<=0.1:
-#             count+=1
-#     acc = count/prob.shape[0]
-#     return acc
+
+def getR5Accuary(prob):
+    temp = prob.detach().cpu().numpy()
+    temp = np.argsort(temp, axis=1)
+    count = 0
+    for i in range(prob.shape[0]):
+        for j in range(prob.shape[1]-4,prob.shape[1]):
+            if temp[i][j] == i:
+                count+=1
+    acc = count/prob.shape[0]
+    return acc
+
+
+def getR10Accuary(prob):
+    temp = prob.detach().cpu().numpy()
+    temp = np.argsort(temp, axis=1)
+    count = 0
+    for i in range(prob.shape[0]):
+        for j in range(prob.shape[1]-9,prob.shape[1]):
+            if temp[i][j] == i:
+                count+=1
+    acc = count/prob.shape[0]
+    return acc
+
+
+def params_count(model):
+    """
+    Compute the number of   parameters.
+    Args:
+        model (model): model to count   the number of parameters.
+    """
+    return np.sum([p.numel() for p in   model.parameters()]).item()

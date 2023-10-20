@@ -9,14 +9,12 @@ from torch.utils.data import DataLoader
 
 from src.models.style_retrieval import StyleRetrieval
 from src.dataset.data import T2ITestDataset, I2ITestDataset
-from src.utils.utils import setup_seed, getR1Accuary
+from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
 
     # project settings
-    parser.add_argument('--output_dir', default='output/')
-    parser.add_argument('--out_path', default='origin-style-loss.jpg')
     parser.add_argument('--resume', default='output/i2i_epoch8.pth', type=str, help='load checkpoints from given path')
     parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
     parser.add_argument('--device', default='cuda:0')
@@ -32,16 +30,11 @@ def parse_args():
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
-    parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
     parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
     parser.add_argument('--n_prompts', type=int, default=4)
     parser.add_argument('--prompt_dim', type=int, default=1024)
-
-    # optimizer settings
-    parser.add_argument('--clip_ln_lr', type=float, default=1e-4)
-    parser.add_argument('--prompt_lr', type=float, default=1e-4)
 
     args = parser.parse_args()
     return args
@@ -50,24 +43,25 @@ def parse_args():
 def eval(args, model, dataloader):
     model.eval()
 
+    acc = []
+
     if args.type == 'image2text':
-        for data in tqdm(enumerate(dataloader)):
-            image = data[1][0].to(device, non_blocking=True)
-            long_caption = model.tokenizer(data[1][1]).to(device, non_blocking=True)
+        for data in enumerate(tqdm(dataloader)):
+            caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
+            image = data[1][1].to(device, non_blocking=True)
 
             image_feature = model(image, dtype='image')
-            text_feature = model(long_caption, dtype='text')
+            text_feature = model(caption, dtype='text')
 
             image_feature = F.normalize(image_feature, dim=-1)
             text_feature = F.normalize(text_feature, dim=-1)
 
             prob = torch.softmax((100.0 * image_feature @ text_feature.T), dim=-1)
 
-            acc = getR1Accuary(prob)
+            acc.append(getR1Accuary(prob))
 
-            print(acc)
     else:
-        for data in enumerate(dataloader):
+        for data in enumerate(tqdm(dataloader)):
             origin_image = data[1][0].to(device, non_blocking=True)
             retrival_image = data[1][1].to(device, non_blocking=True)
 
@@ -79,9 +73,10 @@ def eval(args, model, dataloader):
 
             prob = torch.softmax((100.0 * original_feature @ retrival_feature.T), dim=-1)
 
-            acc = getR1Accuary(prob)
+            acc.append(getR1Accuary(prob))
 
-            print(acc)
+    res = sum(acc)/len(acc)
+    print(res)
 
 
 if __name__ == "__main__":
@@ -95,10 +90,6 @@ if __name__ == "__main__":
 
     # test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
     test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
-
-    optimizer = torch.optim.Adam([
-            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
-            {'params': [model.prompt], 'lr': args.prompt_lr}])
 
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=args.batch_size,
