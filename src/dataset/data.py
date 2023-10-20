@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class StyleT2IDataset(Dataset):
-    def __init__(self, root_path, json_path, image_transform, tokenizer):
+    def __init__(self, root_path, json_path, image_transform):
         self.root_path = root_path
         self.dataset = json.load(open(json_path,'r'))
         self.image_transform = image_transform
