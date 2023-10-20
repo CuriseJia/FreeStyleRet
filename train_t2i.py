@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from src.models.style_retrieval import StyleRetrieval
-from src.dataset.data import StyleI2IDataset, StyleT2IDataset
-from src.utils.utils import setup_seed, save_loss, getI2TR1Accuary, getI2IR1Accuary
+from src.dataset.data import StyleT2IDataset
+from src.utils.utils import setup_seed, save_loss
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
@@ -30,8 +30,8 @@ def parse_args():
     # data settings
     parser.add_argument("--type", type=str, default='image2text', help='choose train image2text or image2image.')
     parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--train_json_path", type=str, default='fscoco/dataset.json')
-    parser.add_argument("--train_batch_size", type=int, default=24)
+    parser.add_argument("--train_json_path", type=str, default='fscoco/train.json')
+    parser.add_argument("--batch_size", type=int, default=24)
     parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
@@ -144,14 +144,13 @@ if __name__ == "__main__":
     # model.load_state_dict(torch.load(args.resume))
 
     train_dataset = StyleT2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
-    # train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
             {'params': [model.prompt], 'lr': args.prompt_lr}])
 
     train_loader = DataLoader(dataset=train_dataset, 
-                            batch_size=args.train_batch_size,
+                            batch_size=args.batch_size,
                             num_workers=args.num_workers,
                             pin_memory=True,
                             prefetch_factor=16,

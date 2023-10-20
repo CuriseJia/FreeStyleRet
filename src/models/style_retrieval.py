@@ -37,7 +37,7 @@ class StyleRetrieval(nn.Module):
         self.style_encoder.apply(freeze_model)
         self.style_patch = nn.Conv2d(128, 256, 16, 16)
         self.style_pool = nn.Sequential(
-                                nn.Linear(model_args.train_batch_size*256, 1024),
+                                nn.Linear(model_args.batch_size*256, 1024),
                                 nn.Linear(1024, 256),
                                 nn.Linear(256, 4))
         self.style_linear = nn.Sequential(
