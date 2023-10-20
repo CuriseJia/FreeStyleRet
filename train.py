@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--train_json_path", type=str, default='fscoco/dataset.json')
     parser.add_argument("--train_batch_size", type=int, default=24)
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
     parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
@@ -71,7 +71,7 @@ def train(args, model, device, dataloader, optimizer):
                 image_feature = model(image, dtype='image')
                 negative_feature = model(negative_image, dtype='image')
 
-                loss = model.get_loss(original_feature, retrival_feature, negative_feature, optimizer)
+                loss = model.get_loss(image_feature, text_feature, negative_feature, optimizer)
 
                 temp_loss.append(loss)
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     # model.load_state_dict(torch.load(args.resume))
 
     train_dataset = StyleT2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
-    train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
+    # train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
