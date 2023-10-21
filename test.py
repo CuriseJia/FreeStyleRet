@@ -19,11 +19,7 @@ def parse_args():
     parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
-    parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    parser.add_argument('--distributed', default=False, type=bool)
     parser.add_argument('--num_workers', default=6, type=int)
-    parser.add_argument("--local_rank", type=int)
 
     # data settings
     parser.add_argument("--type", type=str, default='image2image', help='choose train image2text or image2image.')

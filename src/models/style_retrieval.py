@@ -36,10 +36,7 @@ class StyleRetrieval(nn.Module):
         self.style_encoder.load_state_dict(torch.load(self.model_args.style_encoder_path))
         self.style_encoder.apply(freeze_model)
         self.style_patch = nn.Conv2d(128, 256, 16, 16)
-        self.style_pool = nn.Sequential(
-                                nn.Linear(model_args.batch_size*256, 1024),
-                                nn.Linear(1024, 256),
-                                nn.Linear(256, 4))
+        self.style_pool = nn.Linear(256, 4)
         self.style_linear = nn.Sequential(
                                 nn.Linear(256, 512),
                                 nn.Linear(512, 1024),
@@ -83,10 +80,9 @@ class StyleRetrieval(nn.Module):
         embed = self.style_patch(latent_feature['conv3_1'])
         n, c, h, w = embed.shape    # (b, 256, 7, 7)
 
-        features = embed.reshape(n * c, h * w)  # (b*256, 49)
-        features = torch.mm(features, features.T) / n / c / h / w   # (b*256, b*256)
-        # features = features.view(n, c, -1).permute(0, 2, 1)
-        features = self.style_pool(features.view(n, c, -1))
+        features = embed.view(n, c, -1)  # (b*256, 49)
+        features = torch.bmm(features, features.transpose(1, 2))
+        features = self.style_pool(features)
         prompt_feature = self.style_linear(features.permute(0, 2, 1))
 
         return prompt_feature
