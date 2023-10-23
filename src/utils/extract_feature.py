@@ -102,15 +102,3 @@ print(feature['conv3_1'].shape)
 # print(feature['conv4_2'].shape)
 # print(feature['conv5_1'].shape)
 # print(feature['conv5_2'].shape)
-
-patch = nn.Conv2d(128, 256, 8, 8)
-
-style_linear = nn.Sequential(
-                            nn.Linear(256, 512),
-                            nn.Linear(512, 1024),
-                            nn.Linear(1024, 768))
-
-embed = patch(feature['conv3_1'].unsqueeze(0))
-print(embed.shape)
-embed = style_linear(embed.view(256, -1).permute(1, 0))
-print(embed.shape)

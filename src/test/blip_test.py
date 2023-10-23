@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import json
 
 import torch
@@ -46,7 +45,7 @@ def I2IRetrieval(ori_images, pair_images, ckpt_path, device, batch):
     ske_embed = model.vision_proj(ske_feat)  
     ske_embed = F.normalize(ske_embed,dim=-1)    
 
-    prob = torch.softmax(ori_embed.view(b, -1) @ ske_embed.view(batch, -1).permute(1, 0), dim=-1)
+    prob = torch.softmax(ske_embed.view(batch, -1) @ ori_embed.view(b, -1).permute(1, 0), dim=-1)
 
     return prob
 
@@ -70,17 +69,17 @@ if __name__ == "__main__":
     r1 = []
     r5 = []
     rang = 80
-    b = int(len(pair)/rang)
+    batch = int(len(pair)/rang)
     
     for i in tqdm(range(rang)):
         ori_image=[]
         text_list=[]
         sketch_image=[]
         
-        for j in range(b):
-            caption_path = os.path.join('fscoco/', 'text/'+pair[i*b+j]['caption'])
-            image_path = os.path.join('fscoco/', 'images/'+pair[i*b+j]['image'])
-            # sketch_path = os.path.join('fscoco/', 'mosaic/'+pair[i*b+j]['image'])
+        for j in range(batch):
+            caption_path = os.path.join('fscoco/', 'text/'+pair[i*batch+j]['caption'])
+            image_path = os.path.join('fscoco/', 'images/'+pair[i*batch+j]['image'])
+            # sketch_path = os.path.join('fscoco/', 'mosaic/'+pair[i*batch+j]['image'])
             
             f = open(caption_path, 'r')
             caption = f.readline().replace('\n', '')
@@ -88,11 +87,11 @@ if __name__ == "__main__":
             ori_image.append(image_path)
             # sketch_image.append(sketch_path)
 
-        ori_images = load_image(ori_image, 224, device, b)
-        # sketch_images = load_image(sketch_image, 224, device, b)
+        ori_images = load_image(ori_image, 224, device, batch)
+        # sketch_images = load_image(sketch_image, 224, device, batch)
 
         prob = T2IRetrieval(ori_images, text_list, ckpt_path, device)
-        # prob = I2IRetrieval(ori_images, sketch_images, ckpt_path, device, b)
+        # prob = I2IRetrieval(ori_images, sketch_images, ckpt_path, device, batch)
 
         r1.append(getR1Accuary(prob))
         r5.append(getR5Accuary(prob))

@@ -1,18 +1,15 @@
 import argparse
-import os
-import time
 from tqdm import tqdm
 import torch
-import numpy as np
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from src.models.style_retrieval import StyleRetrieval
+from src.models.style_retrieval import ShallowStyleRetrieval
 from src.dataset.data import T2ITestDataset, I2ITestDataset
 from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
+    parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
 
     # project settings
     parser.add_argument('--resume', default='output/i2i_epoch8.pth', type=str, help='load checkpoints from given path')
@@ -22,7 +19,7 @@ def parse_args():
     parser.add_argument('--num_workers', default=6, type=int)
 
     # data settings
-    parser.add_argument("--type", type=str, default='image2image', help='choose train image2text or image2image.')
+    parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
@@ -39,9 +36,10 @@ def parse_args():
 def eval(args, model, dataloader):
     model.eval()
 
-    acc = []
+    r1 = []
+    r5 = []
 
-    if args.type == 'image2text':
+    if args.type == 'text2image':
         for data in enumerate(tqdm(dataloader)):
             caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
             image = data[1][1].to(device, non_blocking=True)
@@ -52,9 +50,10 @@ def eval(args, model, dataloader):
             image_feature = F.normalize(image_feature, dim=-1)
             text_feature = F.normalize(text_feature, dim=-1)
 
-            prob = torch.softmax((100.0 * image_feature @ text_feature.T), dim=-1)
+            prob = torch.softmax((100.0 * text_feature @ image_feature.T), dim=-1)
 
-            acc.append(getR1Accuary(prob))
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
 
     else:
         for data in enumerate(tqdm(dataloader)):
@@ -67,12 +66,15 @@ def eval(args, model, dataloader):
             original_feature = F.normalize(original_feature, dim=-1)
             retrival_feature = F.normalize(retrival_feature, dim=-1)
 
-            prob = torch.softmax((100.0 * original_feature @ retrival_feature.T), dim=-1)
+            prob = torch.softmax((100.0 * retrival_feature @ original_feature.T), dim=-1)
 
-            acc.append(getR1Accuary(prob))
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
 
-    res = sum(acc)/len(acc)
-    print(res)
+    resr1 = sum(r1)/len(r1)
+    resr5 = sum(r5)/len(r5)
+    print('R@1 Acc is {}'.format(resr1))
+    print('R@5 Acc is {}'.format(resr5))
 
 
 if __name__ == "__main__":
@@ -80,12 +82,14 @@ if __name__ == "__main__":
     setup_seed(args.seed)
     device = torch.device(args.device)
 
-    model = StyleRetrieval(args)
+    model = ShallowStyleRetrieval(args)
     model = model.to(device)
     model.load_state_dict(torch.load(args.resume))
-
-    # test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
-    test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+    
+    if args.type == 'text2image':
+        test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+    else:
+        test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
 
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=args.batch_size,

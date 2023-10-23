@@ -19,9 +19,9 @@ def freeze_all_but_bn(m):
             m.bias.requires_grad_(False)
 
 
-class StyleRetrieval(nn.Module):
+class ShallowStyleRetrieval(nn.Module):
     def __init__(self, model_args, tgt_device='cpu'):
-        super(StyleRetrieval, self).__init__()
+        super(ShallowStyleRetrieval, self).__init__()
         self.model_args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(
             model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device,
@@ -42,13 +42,18 @@ class StyleRetrieval(nn.Module):
                                 nn.Linear(512, 1024),
                                 nn.Linear(1024, model_args.prompt_dim))
         # loss
-        self.triplet_loss = nn.TripletMarginWithDistanceLoss(
+        self.i2t_loss = nn.TripletMarginWithDistanceLoss(
+            distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
+            margin=1)
+        self.t2i_loss = nn.TripletMarginWithDistanceLoss(
             distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
             margin=1)
         
 
     def get_loss(self, image_feature, pair_feature, negative_feature, optimizer):
-        loss = self.triplet_loss(image_feature, pair_feature, negative_feature)
+        loss_1 = self.i2t_loss(image_feature, pair_feature, negative_feature)
+        loss_2 = self.t2i_loss(pair_feature, image_feature, negative_feature)
+        loss = (loss_1 + loss_2) / 2
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()

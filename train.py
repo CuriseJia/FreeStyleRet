@@ -1,30 +1,27 @@
 import argparse
 import os
-import time
 from tqdm import tqdm
 import torch
-import numpy as np
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from src.models.style_retrieval import StyleRetrieval
-from src.dataset.data import StyleI2IDataset
+from src.models.style_retrieval import ShallowStyleRetrieval
+from src.dataset.data import StyleI2IDataset, StyleT2IDataset
 from src.utils.utils import setup_seed, save_loss
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
+    parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
 
     # project settings
     parser.add_argument('--output_dir', default='output/')
     parser.add_argument('--out_path', default='origin-sketch-loss.jpg')
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
     parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
-    parser.add_argument('--device', default='cuda:1')
+    parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
 
     # data settings
-    parser.add_argument("--type", type=str, default='image2image', help='choose train image2text or image2image.')
+    parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
     parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--train_json_path", type=str, default='fscoco/train.json')
     parser.add_argument("--batch_size", type=int, default=24)
@@ -82,7 +79,7 @@ def train(args, model, device, dataloader, optimizer):
             if res<best_loss:
                 best_loss = res
                 save_obj = model.state_dict()
-                torch.save(save_obj, os.path.join(args.output_dir, 'i2t_epoch{}.pth'.format(epoch)))
+                torch.save(save_obj, os.path.join(args.output_dir, 't2i_epoch{}.pth'.format(epoch)))
                 count = 0
             else:
                 count +=1
@@ -119,7 +116,7 @@ def train(args, model, device, dataloader, optimizer):
             if res<best_loss:
                 best_loss = res
                 save_obj = model.state_dict()
-                torch.save(save_obj, os.path.join(args.output_dir, 'i2i_epoch{}.pth'.format(epoch)))
+                torch.save(save_obj, os.path.join(args.output_dir, 's2i_epoch{}.pth'.format(epoch)))
                 count = 0
             else:
                 count +=1
@@ -135,11 +132,15 @@ if __name__ == "__main__":
     setup_seed(args.seed)
     device = torch.device(args.device)
 
-    model = StyleRetrieval(args)
+    model = ShallowStyleRetrieval(args)
     model = model.to(device)
-    # model.load_state_dict(torch.load(args.resume))
+    if args.resume:
+        model.load_state_dict(torch.load(args.resume))
 
-    train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
+    if args.type == 'text2image':
+        train_dataset = StyleT2IDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+    else:
+        train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
