@@ -2,13 +2,9 @@ from imagebind import data
 import torch
 from imagebind.models import imagebind_model
 from imagebind.models.imagebind_model import ModalityType
-import numpy.random as random
-import numpy as np
 import json
 import os
-import os.path as osp
 from tqdm import tqdm
-from fvcore.nn import FlopCountAnalysis, parameter_count_table
 
 from utils.utils import getR1Accuary, getR5Accuary
 
@@ -21,14 +17,18 @@ model.eval()
 model.to(device)
 
 pair = json.load(open('fscoco/test.json', 'r'))
-acc = []
-for i in tqdm(range(20)):
+r1 = []
+r5 = []
+rang = 20
+batch = int(len(pair)/rang)
+
+for i in tqdm(range(rang)):
     ori_image=[]
     text_list=[]
     sketch_image=[]
-    for j in range(100):
-        caption_path = os.path.join('fscoco/', 'text/'+pair[i*50+j]['caption'])
-        image_path = os.path.join('fscoco/', 'images/'+pair[i*50+j]['image'])
+    for j in range(batch):
+        caption_path = os.path.join('fscoco/', 'text/'+pair[i*batch+j]['caption'])
+        image_path = os.path.join('fscoco/', 'images/'+pair[i*batch+j]['image'])
         f = open(caption_path, 'r')
         caption = f.readline().replace('\n', '')
         text_list.append(caption)
@@ -46,10 +46,13 @@ for i in tqdm(range(20)):
         embeddings1 = model(input1)
         embeddings2 = model(input2)
 
-    # prob = torch.softmax(embeddings1[ModalityType.VISION] @ embeddings1[ModalityType.TEXT].T, dim=-1)
-    prob = torch.softmax(embeddings1[ModalityType.VISION] @ embeddings2[ModalityType.TEXT].T, dim=-1)
+    # prob = torch.softmax(embeddings2[ModalityType.VISION] @ embeddings2[ModalityType.TEXT].T, dim=-1)
+    prob = torch.softmax(embeddings2[ModalityType.TEXT].T @ embeddings1[ModalityType.VISION], dim=-1)
 
-    acc.append(getR5Accuary(prob))  
+    r1.append(getR1Accuary(prob))
+    r5.append(getR5Accuary(prob))  
 
-r1 = sum(acc)/len(acc)
-print(r1)
+resr1 = sum(r1)/len(r1)
+resr5 = sum(r5)/len(r5)
+print(resr1)
+print(resr5)
