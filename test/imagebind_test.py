@@ -1,7 +1,7 @@
-from imagebind import data
+from ImageBind import data
 import torch
-from imagebind.models import imagebind_model
-from imagebind.models.imagebind_model import ModalityType
+from ImageBind.models import imagebind_model
+from ImageBind.models.imagebind_model import ModalityType
 import json
 import os
 from tqdm import tqdm

@@ -8,12 +8,13 @@ from src.models.style_retrieval import ShallowStyleRetrieval
 from src.dataset.data import T2ITestDataset, I2ITestDataset
 from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
 
     # project settings
-    parser.add_argument('--resume', default='output/i2i_epoch8.pth', type=str, help='load checkpoints from given path')
-    parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
+    parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
+    parser.add_argument('--style_encoder_path', default='pretrained/vgg_normalised.pth', type=str, help='load vgg from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=6, type=int)

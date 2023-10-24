@@ -8,6 +8,7 @@ from src.models.style_retrieval import ShallowStyleRetrieval
 from src.dataset.data import StyleI2IDataset, StyleT2IDataset
 from src.utils.utils import setup_seed, save_loss
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
 
@@ -15,14 +16,14 @@ def parse_args():
     parser.add_argument('--output_dir', default='output/')
     parser.add_argument('--out_path', default='origin-sketch-loss.jpg')
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
-    parser.add_argument('--style_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
+    parser.add_argument('--style_encoder_path', default='pretrained/vgg_normalised.pth', type=str, help='load vgg from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
-    parser.add_argument("--train_ori_dataset_path", type=str, default='fscoco/')
+    parser.add_argument("--train_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--train_json_path", type=str, default='fscoco/train.json')
     parser.add_argument("--batch_size", type=int, default=24)
     parser.add_argument("--epochs", type=int, default=10)
@@ -33,8 +34,8 @@ def parse_args():
     parser.add_argument('--prompt_dim', type=int, default=1024)
 
     # optimizer settings
-    parser.add_argument('--clip_ln_lr', type=float, default=1e-4)
-    parser.add_argument('--prompt_lr', type=float, default=1e-4)
+    parser.add_argument('--clip_ln_lr', type=float, default=1e-5)
+    parser.add_argument('--prompt_lr', type=float, default=1e-5)
 
     args = parser.parse_args()
     return args
@@ -50,7 +51,7 @@ def train(args, model, device, dataloader, optimizer):
     epoches = []
     count = 0
 
-    if args.type == 'image2text':
+    if args.type == 'text2image':
         for epoch in range(args.epochs):
             temp_loss = []
 
@@ -87,7 +88,7 @@ def train(args, model, device, dataloader, optimizer):
             if best_loss < 0.0001 or count >= 5:
                 break
     
-    else:   # image2image retrival
+    else:   # style2image retrival
         for epoch in range(args.epochs):
             temp_loss = []
             
@@ -138,15 +139,15 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(args.resume))
 
     if args.type == 'text2image':
-        train_dataset = StyleT2IDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+        train_dataset = StyleT2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
     else:
-        train_dataset = StyleI2IDataset(args.train_ori_dataset_path,  args.train_json_path, model.pre_process_train)
+        train_dataset = StyleI2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
 
     optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
             {'params': [model.prompt], 'lr': args.prompt_lr}])
 
-    train_loader = DataLoader(dataset=train_dataset, 
+    train_loader = DataLoader(dataset=train_dataset,
                             batch_size=args.batch_size,
                             num_workers=args.num_workers,
                             pin_memory=True,
