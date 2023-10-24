@@ -13,7 +13,6 @@ from BLIP.models.blip_retrieval import blip_retrieval
 image_mean = (0.48145466, 0.4578275, 0.40821073)
 image_std = (0.26861954, 0.26130258, 0.27577711)
 
-
 def freeze_all_but_bn(m):
     if not isinstance(m, torch.nn.LayerNorm):
         if hasattr(m, 'weight') and m.weight is not None:
@@ -127,8 +126,8 @@ class Prompt_CLIP(nn.Module):
         if dtype == 'image': 
             feat = self.openclip.encode_image(
                 data + self.img_prompt.expand(data.shape[0], -1, -1).view(
-                    data.shape[0],data.shape[1],data.shape[2],data.shape[3])
-            )
+                    data.shape[0],data.shape[1],data.shape[2],data.shape[3]))
+            
         else:
             text = self.tokenizer(data).to(self.args.device)
             feat = self.openclip.encode_text(text)
