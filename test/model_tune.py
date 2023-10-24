@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
     parser.add_argument("--train_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--train_json_path", type=str, default='fscoco/train.json')
-    parser.add_argument("--batch_size", type=int, default=24)
+    parser.add_argument("--batch_size", type=int, default=12)
     parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
@@ -132,24 +132,31 @@ if __name__ == "__main__":
     device = torch.device(args.device)
 
     if args.model == 'CLIP':
-        model = Prompt_CLIP(args)
+        model = Prompt_CLIP(args).to(device)
+        optimizer = torch.optim.Adam([
+            {'params': model.openclip.parameters(), 'lr': args.ln_lr},
+            {'params': [model.prompt], 'lr': args.prompt_lr}])
+        if args.resume:
+            model.openclip.load_state_dict(torch.load(args.resume))
+            print('success load ckpt model {}'.format(args.resume))
     elif args.model == 'BLIP':
-        model = Prompt_BLIP(args)
+        model = Prompt_BLIP(args).to(device)
+        optimizer = torch.optim.Adam([
+            {'params': model.blip.parameters(), 'lr': args.ln_lr},
+            {'params': [model.prompt], 'lr': args.prompt_lr}])
     elif args.model == 'ImageBind':
-        model = Prompt_ImageBind(args)
-    
-    model = model.to(device)
-    if args.resume:
-        model.load_state_dict(torch.load(args.resume))
+        model = Prompt_ImageBind(args).to(device)
+        optimizer = torch.optim.Adam([
+            {'params': model.imagebind.parameters(), 'lr': args.ln_lr},
+            {'params': [model.prompt], 'lr': args.prompt_lr}])
+        if args.resume:
+            model.imagebind.load_state_dict(torch.load(args.resume))
+            print('success load ckpt model {}'.format(args.resume))
 
     if args.type == 'text2image':
         train_dataset = StyleT2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
     else:
         train_dataset = StyleI2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
-
-    optimizer = torch.optim.Adam([
-            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
-            {'params': [model.prompt], 'lr': args.prompt_lr}])
 
     train_loader = DataLoader(dataset=train_dataset,
                             batch_size=args.batch_size,
