@@ -9,7 +9,7 @@ from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from tqdm import tqdm
 
-from models.blip import blip_retrieval, blip_itm
+from BLIP.models import blip_retrieval, blip_itm
 from utils.utils import getR1Accuary, getR5Accuary
 
 
@@ -45,7 +45,7 @@ def I2IRetrieval(ori_images, pair_images, ckpt_path, device, batch):
     ske_embed = model.vision_proj(ske_feat)  
     ske_embed = F.normalize(ske_embed,dim=-1)    
 
-    prob = torch.softmax(ske_embed.view(batch, -1) @ ori_embed.view(b, -1).permute(1, 0), dim=-1)
+    prob = torch.softmax(ske_embed.view(batch, -1) @ ori_embed.view(batch, -1).permute(1, 0), dim=-1)
 
     return prob
 
@@ -61,7 +61,6 @@ def T2IRetrieval(ori_images, text_caption, ckpt_path, device):
 
 
 if __name__ == "__main__":
-
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     ckpt_path = 'model_large_retrieval_coco.pth'
     pair = json.load(open('fscoco/test.json', 'r'))
