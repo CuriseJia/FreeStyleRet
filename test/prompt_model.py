@@ -25,8 +25,7 @@ class Prompt_ImageBind(nn.Module):
     def __init__(self, model_args):
         super(Prompt_ImageBind, self).__init__()
         self.args = model_args
-        self.imagebind = imagebind_model.imagebind_huge()
-        self.pre_process_train = image_transform(224, True)
+        self.imagebind = imagebind_model.imagebind_huge(pretrained=self.args.resume)
         self.imagebind.apply(freeze_all_but_bn)
         self.prompt = nn.Parameter(torch.randn(
             self.args.n_prompts, self.args.prompt_dim))
@@ -65,8 +64,7 @@ class Prompt_BLIP(nn.Module):
     def __init__(self, model_args):
         super(Prompt_BLIP, self).__init__()
         self.args = model_args
-        self.blip = blip_retrieval(pretrained='/public/home/jiayanhao/airproduct/BLIP/model_large_retrieval_coco.pth', image_size=224, vit='large', vit_grad_ckpt=True, vit_ckpt_layer=10)
-        self.pre_process_train = image_transform(224, True)
+        self.blip = blip_retrieval(pretrained=self.args.resume, image_size=224, vit='large', vit_grad_ckpt=True, vit_ckpt_layer=10)
         self.blip.apply(freeze_all_but_bn)
         self.prompt = nn.Parameter(torch.randn(
             self.args.n_prompts, self.args.prompt_dim))
@@ -109,8 +107,7 @@ class Prompt_CLIP(nn.Module):
         super(Prompt_CLIP, self).__init__()
         self.args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(
-            model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=self.args.device,
-        )
+            model_name='ViT-L-14', pretrained=self.args.resume, device=self.args.device)
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
         # Prompt Token
