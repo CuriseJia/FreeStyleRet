@@ -10,7 +10,7 @@ from src.utils.utils import setup_seed, save_loss
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
+    parser = argparse.ArgumentParser(description='Parse args for Multi-Modal Model Finetune.')
 
     # project settings
     parser.add_argument('--output_dir', default='output/')
@@ -54,7 +54,6 @@ def train(args, model, device, dataloader, optimizer):
             temp_loss = []
 
             for data in enumerate(tqdm(dataloader)): 
-
                 caption = data[1][0]
                 image = data[1][1].to(device, non_blocking=True)
                 negative_image = data[1][2].to(device, non_blocking=True)
@@ -91,7 +90,6 @@ def train(args, model, device, dataloader, optimizer):
             temp_loss = []
             
             for data in enumerate(tqdm(dataloader)):
-
                 original_image = data[1][0].to(device, non_blocking=True)
                 retrival_image = data[1][1].to(device, non_blocking=True)
                 negative_image = data[1][2].to(device, non_blocking=True)
