@@ -4,9 +4,9 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from src.models.style_retrieval import ShallowStyleRetrieval
-from src.dataset.data import StyleI2IDataset, StyleT2IDataset
-from src.utils.utils import setup_seed, save_loss
+from src.models import ShallowStyleRetrieval, DeepStyleRetrieval
+from src.dataset import StyleI2IDataset, StyleT2IDataset
+from src.utils import setup_seed, save_loss
 
 
 def parse_args():
@@ -30,8 +30,10 @@ def parse_args():
 
     # model settings
     parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
-    parser.add_argument('--n_prompts', type=int, default=4)
-    parser.add_argument('--prompt_dim', type=int, default=1024)
+    parser.add_argument('--gram_prompts', type=int, default=4)
+    parser.add_argument('--gram_prompt_dim', type=int, default=1024)
+    parser.add_argument('--style_prompts', type=int, default=4)
+    parser.add_argument('--style_prompt_dim', type=int, default=1024)
 
     # optimizer settings
     parser.add_argument('--clip_ln_lr', type=float, default=1e-5)
@@ -133,7 +135,10 @@ if __name__ == "__main__":
     setup_seed(args.seed)
     device = torch.device(args.device)
 
-    model = ShallowStyleRetrieval(args)
+    if args.prompt == 'ShallowPrompt':
+        model = ShallowStyleRetrieval(args)
+    else:
+        model = DeepStyleRetrieval(args)
     model = model.to(device)
     if args.resume:
         model.load_state_dict(torch.load(args.resume))

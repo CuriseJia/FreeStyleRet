@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from src.models.style_retrieval import ShallowStyleRetrieval
+from src.models import ShallowStyleRetrieval, DeepStyleRetrieval
 from src.dataset.data import T2ITestDataset, I2ITestDataset
 from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
 
@@ -83,7 +83,10 @@ if __name__ == "__main__":
     setup_seed(args.seed)
     device = torch.device(args.device)
 
-    model = ShallowStyleRetrieval(args)
+    if args.prompt == 'ShallowPrompt':
+        model = ShallowStyleRetrieval(args)
+    else:
+        model = DeepStyleRetrieval(args)
     model = model.to(device)
     model.load_state_dict(torch.load(args.resume))
     
