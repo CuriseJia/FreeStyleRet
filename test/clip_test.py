@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('--num_workers', default=6, type=int)
 
     # data settings
-    parser.add_argument("--type", type=str, default='image2image', help='choose train image2text or image2image.')
+    parser.add_argument("--type", type=str, default='style2image', help='choose train test2image or style2image.')
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=16)
@@ -29,7 +29,8 @@ def parse_args():
 def eval(args, model, tokenizer, dataloader):
     model.eval()
 
-    acc = []
+    r1 = []
+    r5 = []
 
     if args.type == 'image2text':
         for data in enumerate(tqdm(dataloader)):
@@ -42,9 +43,10 @@ def eval(args, model, tokenizer, dataloader):
             image_feature = F.normalize(image_feature, dim=-1)
             text_feature = F.normalize(text_feature, dim=-1)
 
-            prob = torch.softmax((100.0 * image_feature @ text_feature.T), dim=-1)
+            prob = torch.softmax((100.0 * text_feature @ image_feature.T), dim=-1)
 
-            acc.append(getR1Accuary(prob))
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
 
     else:
         for data in enumerate(tqdm(dataloader)):
@@ -57,12 +59,15 @@ def eval(args, model, tokenizer, dataloader):
             original_feature = F.normalize(original_feature, dim=-1)
             retrival_feature = F.normalize(retrival_feature, dim=-1)
 
-            prob = torch.softmax((100.0 * original_feature @ retrival_feature.T), dim=-1)
+            prob = torch.softmax((100.0 * retrival_feature @ original_feature.T), dim=-1)
 
-            acc.append(getR1Accuary(prob))
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
 
-    res = sum(acc)/len(acc)
-    print(res)
+    resr1 = sum(r1)/len(r1)
+    resr5 = sum(r5)/len(r5)
+    print(resr1)
+    print(resr5)
 
 
 if __name__ == "__main__":

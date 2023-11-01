@@ -24,8 +24,7 @@ class ShallowStyleRetrieval(nn.Module):
         super(ShallowStyleRetrieval, self).__init__()
         self.model_args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(
-            model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device,
-        )
+            model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device)
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
         self.visual = self.openclip.visual
@@ -148,8 +147,7 @@ class DeepStyleRetrieval(nn.Module):
         super(DeepStyleRetrieval, self).__init__()
         self.args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(
-            model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device,
-        )
+            model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device)
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
         self.visual = self.openclip.visual
