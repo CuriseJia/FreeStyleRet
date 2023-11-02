@@ -4,9 +4,16 @@ import torch
 import open_clip
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from open_clip.factory import image_transform
 
 from src.dataset.data import T2ITestDataset, I2ITestDataset
-from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
+from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary
+from prompt_model import Prompt_CLIP
+
+
+image_mean = (0.48145466, 0.4578275, 0.40821073)
+image_std = (0.26861954, 0.26130258, 0.27577711)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
@@ -21,6 +28,11 @@ def parse_args():
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=16)
+
+    # model settings
+    parser.add_argument('--model', type=str, default='prompt', help='prompt-imagebind or imagebind-huge.')
+    parser.add_argument('--n_prompts', type=int, default=3)
+    parser.add_argument('--prompt_dim', type=int, default=50176)
 
     args = parser.parse_args()
     return args
@@ -74,12 +86,18 @@ if __name__ == "__main__":
     args = parse_args()
     setup_seed(args.seed)
     device = torch.device(args.device)
+    
+    if args.model == 'prompt':
+        model, _, pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=device)
+        tokenizer = open_clip.get_tokenizer('ViT-L-14')
+    else:
+        model = Prompt_CLIP(args)
+        tokenizer = model.tokenizer
 
-    model, _, pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=device)
-    tokenizer = open_clip.get_tokenizer('ViT-L-14')
-
-    # test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
-    test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
+    if args.type == 'text2image':
+        test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
+    else:
+        test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
 
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=args.batch_size,

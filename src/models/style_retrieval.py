@@ -1,5 +1,5 @@
 import open_clip
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -79,7 +79,7 @@ class ShallowStyleRetrieval(nn.Module):
         return features
     
 
-    def _get_prompt(self, input):
+    def _get_gram_prompt(self, input):
         latent_feature = self._get_features(input, self.gram_encoder)
         embed = self.gram_patch(latent_feature['conv3_1'])
         n, c, h, w = embed.shape    # (b, 256, 7, 7)
@@ -108,7 +108,7 @@ class ShallowStyleRetrieval(nn.Module):
         x = self.visual.patch_dropout(x)
         x = self.visual.ln_pre(x)
 
-        self.gram_prompt.parameter = self._get_prompt(input)
+        self.gram_prompt.parameter = self._get_gram_prompt(input)
         x = torch.cat([x[:, 0, :].unsqueeze(1), self.gram_prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
 
         x = x.permute(1, 0, 2)  # NLD -> LND
@@ -156,7 +156,7 @@ class DeepStyleRetrieval(nn.Module):
         self.gram_prompt = nn.Parameter(torch.randn(
             self.args.gram_prompts, self.args.gram_prompt_dim))
         self.gram_encoder = VGG
-        self.gram_encoder.load_state_dict(torch.load(self.args.style_encoder_path))
+        self.gram_encoder.load_state_dict(torch.load(self.args.gram_encoder_path))
         self.gram_encoder.apply(freeze_model)
         self.gram_patch = nn.Conv2d(128, 256, 16, 16)
         self.gram_pool = nn.Linear(256, 4)
@@ -166,7 +166,13 @@ class DeepStyleRetrieval(nn.Module):
                                 nn.Linear(1024, self.args.gram_prompt_dim))
         self.style_prompt = nn.Parameter(torch.randn(
             self.args.style_prompts, self.args.style_prompt_dim))
-        self.style_pool = nn.Linear(4, 1)
+        self.style_patch = nn.Sequential(
+                            nn.Conv2d(128, 256, 16, 16),
+                            nn.Conv2d(256, 256, 7, 7))
+        self.style_linear = nn.Sequential(
+                                nn.Linear(256, 512),
+                                nn.Linear(512, 1024),
+                                nn.Linear(1024, self.args.gram_prompt_dim))
         # loss
         self.i2t_loss = nn.TripletMarginWithDistanceLoss(
             distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
@@ -206,7 +212,7 @@ class DeepStyleRetrieval(nn.Module):
         return features
     
 
-    def _get_prompt(self, input):
+    def _get_gram_prompt(self, input):
         latent_feature = self._get_features(input, self.gram_encoder)
         embed = self.gram_patch(latent_feature['conv3_1'])
         n, c, h, w = embed.shape    # (b, 256, 7, 7)
@@ -219,8 +225,19 @@ class DeepStyleRetrieval(nn.Module):
         return prompt_feature
     
 
+    def _get_style_prompt(self):
+        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(4, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        feature = self.style_patch(feature).view(4, 256)
+        feature = self.style_linear(feature)
+
+        return feature
+
+
     def _visual_forward(self, x):
         input = x
+        self.gram_prompt.parameter = self._get_gram_prompt(input)
+        self.style_prompt.parameter = self._get_style_prompt()
+
         x = self.visual.conv1(x)  # shape = [*, width, grid, grid]
         x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
@@ -236,7 +253,6 @@ class DeepStyleRetrieval(nn.Module):
         x = self.visual.ln_pre(x)
 
         # add style_prompt
-        self.style_prompt.parameter = self._get_prompt(input)
         x = torch.cat([x[:, 0, :].unsqueeze(1), self.style_prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
 
         # add gram_prompt before the last block of transformer
