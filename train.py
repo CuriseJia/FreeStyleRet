@@ -30,7 +30,8 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
-    parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
+    parser.add_argument('--prompt_type', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
+    parser.add_argument('--prompt_location', type=str, default='Shallow', help='Shallow, Bottom or Middle')
     parser.add_argument('--gram_prompts', type=int, default=4)
     parser.add_argument('--gram_prompt_dim', type=int, default=1024)
     parser.add_argument('--style_prompts', type=int, default=4)
