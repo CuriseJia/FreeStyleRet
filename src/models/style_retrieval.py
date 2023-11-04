@@ -22,24 +22,25 @@ def freeze_all_but_bn(m):
 class ShallowStyleRetrieval(nn.Module):
     def __init__(self, model_args, tgt_device='cpu'):
         super(ShallowStyleRetrieval, self).__init__()
-        self.model_args = model_args
+        self.args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(
             model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=tgt_device)
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
         self.visual = self.openclip.visual
+        self.transformer = self.visual.transformer
         # Prompt Token
         self.gram_prompt = nn.Parameter(torch.randn(
-            self.model_args.gram_prompts, self.model_args.gram_prompt_dim))
+            self.args.gram_prompts, self.args.gram_prompt_dim))
         self.gram_encoder = VGG
-        self.gram_encoder.load_state_dict(torch.load(self.model_args.gram_encoder_path))
+        self.gram_encoder.load_state_dict(torch.load(self.args.gram_encoder_path))
         self.gram_encoder.apply(freeze_model)
         self.gram_patch = nn.Conv2d(128, 256, 16, 16)
         self.gram_pool = nn.Linear(256, 4)
         self.gram_linear = nn.Sequential(
                                 nn.Linear(256, 512),
                                 nn.Linear(512, 1024),
-                                nn.Linear(1024, model_args.gram_prompt_dim))
+                                nn.Linear(1024, self.args.gram_prompt_dim))
         # loss
         self.i2t_loss = nn.TripletMarginWithDistanceLoss(
             distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
@@ -109,11 +110,25 @@ class ShallowStyleRetrieval(nn.Module):
         x = self.visual.ln_pre(x)
 
         self.gram_prompt.parameter = self._get_gram_prompt(input)
-        x = torch.cat([x[:, 0, :].unsqueeze(1), self.gram_prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
 
-        x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.visual.transformer(x)
-        x = x.permute(1, 0, 2)  # LND -> NLD
+        if self.args.prompt_location == 'Shallow':
+
+            x = torch.cat([x[:, 0, :].unsqueeze(1), self.gram_prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
+
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            x = self.visual.transformer(x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
+        
+        elif self.args.prompt_location == 'Bottom':
+
+            x = x.permute(1, 0, 2)  # NLD -> LND
+            for r in range(len(self.transformer.resblocks)):
+                if r == len(self.transformer.resblocks)-1:
+                    x = torch.cat([x[0, :, :].unsqueeze(0), 
+                                self.gram_prompt.expand(self.args.batch_size,-1,-1).permute(1, 0, 2), 
+                                x[1:, :, :]], dim=0)
+                x = self.transformer.resblocks[r](x)
+            x = x.permute(1, 0, 2)  # LND -> NLD
 
         # if self.visual.attn_pool is not None:
         #     x = self.visual.attn_pool(x)
