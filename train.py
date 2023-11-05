@@ -139,12 +139,10 @@ if __name__ == "__main__":
 
     if args.prompt == 'ShallowPrompt':
         model = ShallowStyleRetrieval(args)
-        optimizer = torch.optim.Adam([
-            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
-            {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
     else:
         model = DeepStyleRetrieval(args)
-        optimizer = torch.optim.Adam([
+        
+    optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
             {'params': [model.style_prompt], 'lr': args.style_prompt_lr},
             {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])

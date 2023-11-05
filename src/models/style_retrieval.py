@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from scipy import spatial
 
 from .vgg import VGG
 
@@ -17,6 +18,14 @@ def freeze_all_but_bn(m):
             m.weight.requires_grad_(False)
         if hasattr(m, 'bias') and m.bias is not None:
             m.bias.requires_grad_(False)
+
+
+def select_style_prompt(x, cluster):
+    score=[]
+    for i in range(cluster.shape[0]):
+        score.append(1-spatial.distance.cosine(x.squeeze(0).cpu(), cluster[i].cpu().squeeze(0)))
+    index = np.argsort(score, axis=0)
+    return cluster[index[-1]]
 
 
 class ShallowStyleRetrieval(nn.Module):
@@ -38,6 +47,15 @@ class ShallowStyleRetrieval(nn.Module):
         self.gram_patch = nn.Conv2d(128, 256, 16, 16)
         self.gram_pool = nn.Linear(256, 4)
         self.gram_linear = nn.Sequential(
+                                nn.Linear(256, 512),
+                                nn.Linear(512, 1024),
+                                nn.Linear(1024, self.args.gram_prompt_dim))
+        self.style_prompt = nn.Parameter(torch.randn(
+            self.args.style_prompts, self.args.style_prompt_dim))
+        self.style_patch = nn.Sequential(
+                            nn.Conv2d(128, 256, 16, 16),
+                            nn.Conv2d(256, 256, 7, 7))
+        self.style_linear = nn.Sequential(
                                 nn.Linear(256, 512),
                                 nn.Linear(512, 1024),
                                 nn.Linear(1024, self.args.gram_prompt_dim))
@@ -91,6 +109,14 @@ class ShallowStyleRetrieval(nn.Module):
         prompt_feature = self.gram_linear(features.permute(0, 2, 1))
 
         return prompt_feature
+    
+
+    def _get_style_prompt(self):
+        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(4, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        feature = self.style_patch(feature).view(4, 256)
+        feature = self.style_linear(feature)
+
+        return feature
     
 
     def _visual_forward(self, x):
@@ -240,10 +266,12 @@ class DeepStyleRetrieval(nn.Module):
         return prompt_feature
     
 
-    def _get_style_prompt(self):
-        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(4, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
-        feature = self.style_patch(feature).view(4, 256)
-        feature = self.style_linear(feature)
+    def _get_style_prompt(self, input):
+        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        input = self._get_features(input, self.gram_encoder)
+        feature = select_style_prompt(input['conv3_1'].view(self.args.batch_size, -1), feature.view(4, 1605632)).unsqueeze(0)       # (1, 1605632)
+        feature = self.style_patch(feature.view(self.args.batch_size, 128, 112, 112)).view(1, 256)
+        feature = self.style_linear(feature).repeat(4,1)
 
         return feature
 
@@ -251,7 +279,7 @@ class DeepStyleRetrieval(nn.Module):
     def _visual_forward(self, x):
         input = x
         self.gram_prompt.parameter = self._get_gram_prompt(input)
-        self.style_prompt.parameter = self._get_style_prompt()
+        self.style_prompt.parameter = self._get_style_prompt(input)
 
         x = self.visual.conv1(x)  # shape = [*, width, grid, grid]
         x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
