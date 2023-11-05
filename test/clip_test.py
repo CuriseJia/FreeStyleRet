@@ -1,5 +1,6 @@
 import argparse
 from tqdm import tqdm
+import time
 import torch
 import open_clip
 import torch.nn.functional as F
@@ -16,9 +17,11 @@ image_std = (0.26861954, 0.26130258, 0.27577711)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_CLIP or Origin_CLIP test.')
 
     # project settings
+    parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
+    parser.add_argument('--prompt_resume', default='', type=str, help='load prompt model checkpoint from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
@@ -30,7 +33,7 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=16)
 
     # model settings
-    parser.add_argument('--model', type=str, default='prompt', help='prompt-imagebind or imagebind-huge.')
+    parser.add_argument('--model', type=str, default='prompt', help='prompt-clip or origin_clip.')
     parser.add_argument('--n_prompts', type=int, default=3)
     parser.add_argument('--prompt_dim', type=int, default=50176)
 
@@ -46,6 +49,8 @@ def eval(args, model, tokenizer, dataloader):
 
     if args.type == 'image2text':
         for data in enumerate(tqdm(dataloader)):
+            t1 = time.time()
+
             caption = tokenizer(data[1][0]).to(device, non_blocking=True)
             image = data[1][1].to(device, non_blocking=True)
 
@@ -57,11 +62,16 @@ def eval(args, model, tokenizer, dataloader):
 
             prob = torch.softmax((100.0 * text_feature @ image_feature.T), dim=-1)
 
+            t2 = time.time()
+            print('inference a batch costs {}ms'.format((t2-t1)*1000))
+
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
 
     else:
         for data in enumerate(tqdm(dataloader)):
+            t1 = time.time()
+            
             origin_image = data[1][0].to(device, non_blocking=True)
             retrival_image = data[1][1].to(device, non_blocking=True)
 
@@ -72,6 +82,9 @@ def eval(args, model, tokenizer, dataloader):
             retrival_feature = F.normalize(retrival_feature, dim=-1)
 
             prob = torch.softmax((100.0 * retrival_feature @ original_feature.T), dim=-1)
+
+            t2 = time.time()
+            print('inference a batch costs {}ms'.format((t2-t1)*1000))
 
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
@@ -88,11 +101,13 @@ if __name__ == "__main__":
     device = torch.device(args.device)
     
     if args.model == 'prompt':
-        model, _, pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14', pretrained='laion2b_s32b_b82k', device=device)
-        tokenizer = open_clip.get_tokenizer('ViT-L-14')
-    else:
         model = Prompt_CLIP(args)
+        model.load_state_dict(torch.load(args.prompt_resume))
         tokenizer = model.tokenizer
+    else:
+        
+        model, _, pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14', pretrained=args.origin_resume, device=device)
+        tokenizer = open_clip.get_tokenizer('ViT-L-14')
 
     if args.type == 'text2image':
         test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)

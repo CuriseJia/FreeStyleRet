@@ -3,6 +3,7 @@ import argparse
 import sys
 import json
 import os
+import time
 from tqdm import tqdm
 from open_clip.factory import image_transform
 from torch.utils.data import DataLoader
@@ -18,10 +19,11 @@ image_std = (0.26861954, 0.26130258, 0.27577711)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_ImageBind test.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_ImageBind or Origin_ImageBind test.')
 
     # project settings
-    parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
+    parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
+    parser.add_argument('--prompt_resume', default='', type=str, help='load prompt model checkpoint from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--num_workers', default=6, type=int)
 
@@ -41,6 +43,8 @@ def parse_args():
 
 
 def S2IRetrieval(args, model, ori_feat, pair_feat):
+    t1 = time.time()
+
     if args.model == 'prompt':
         ori_feat = model(ori_feat, dtype='image')
         ske_feat = model(pair_feat, mode='image')  
@@ -53,11 +57,16 @@ def S2IRetrieval(args, model, ori_feat, pair_feat):
             ske_feat = model(pair_feat)
         
         prob = torch.softmax(ske_feat[ModalityType.VISION] @ ori_feat[ModalityType.VISION].T, dim=-1)
+    
+    t2 = time.time()
+    print('inference a batch costs {}ms'.format((t2-t1)*1000))
 
     return prob
 
 
 def T2IRetrieval(args, model, ori_feat, pair_feat):
+    t1 = time.time()
+
     if args.model == 'prompt':
         ori_feat = model(ori_feat, dtype='image')
         ske_feat = model(pair_feat, mode='text')
@@ -69,6 +78,9 @@ def T2IRetrieval(args, model, ori_feat, pair_feat):
         
     prob = torch.softmax(ske_feat[ModalityType.TEXT] @ ori_feat[ModalityType.VISION].T, dim=-1)
 
+    t2 = time.time()
+    print('inference a batch costs {}ms'.format((t2-t1)*1000))
+
     return prob
 
 
@@ -78,8 +90,9 @@ if __name__ == "__main__":
 
     if args.model == 'prompt':
         model = Prompt_ImageBind(args)
+        model.load_state_dict(torch.load(args.prompt_resume))
     else:
-        model = imagebind_model.imagebind_huge(args.resume)
+        model = imagebind_model.imagebind_huge(args.origin_resume)
 
     model.eval()
     model.to(args.device)
