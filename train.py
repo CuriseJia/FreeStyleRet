@@ -30,8 +30,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=10)
 
     # model settings
-    parser.add_argument('--prompt_type', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
-    parser.add_argument('--prompt_location', type=str, default='Shallow', help='Shallow, Bottom or Middle')
+    parser.add_argument('--prompt', type=str, default='DeepPrompt', help='ShallowPrompt or DeepPrompt')
     parser.add_argument('--gram_prompts', type=int, default=4)
     parser.add_argument('--gram_prompt_dim', type=int, default=1024)
     parser.add_argument('--style_prompts', type=int, default=4)
@@ -39,7 +38,8 @@ def parse_args():
 
     # optimizer settings
     parser.add_argument('--clip_ln_lr', type=float, default=1e-5)
-    parser.add_argument('--prompt_lr', type=float, default=1e-5)
+    parser.add_argument('--style_prompt_lr', type=float, default=1e-5)
+    parser.add_argument('--gram_prompt_lr', type=float, default=1e-5)
 
     args = parser.parse_args()
     return args
@@ -84,7 +84,7 @@ def train(args, model, device, dataloader, optimizer):
             if res<best_loss:
                 best_loss = res
                 save_obj = model.state_dict()
-                torch.save(save_obj, os.path.join(args.output_dir, 't2i_epoch{}.pth'.format(epoch)))
+                torch.save(save_obj, os.path.join(args.output_dir, '{}_t2i.pth'.format(args.prompt_type)))
                 count = 0
             else:
                 count +=1
@@ -121,7 +121,7 @@ def train(args, model, device, dataloader, optimizer):
             if res<best_loss:
                 best_loss = res
                 save_obj = model.state_dict()
-                torch.save(save_obj, os.path.join(args.output_dir, 's2i_epoch{}.pth'.format(epoch)))
+                torch.save(save_obj, os.path.join(args.output_dir, '{}_s2i.pth'.format(args.prompt_type)))
                 count = 0
             else:
                 count +=1
@@ -139,8 +139,16 @@ if __name__ == "__main__":
 
     if args.prompt == 'ShallowPrompt':
         model = ShallowStyleRetrieval(args)
+        optimizer = torch.optim.Adam([
+            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
+            {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
     else:
         model = DeepStyleRetrieval(args)
+        optimizer = torch.optim.Adam([
+            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
+            {'params': [model.style_prompt], 'lr': args.style_prompt_lr},
+            {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
+        
     model = model.to(device)
     if args.resume:
         model.load_state_dict(torch.load(args.resume))
@@ -149,10 +157,6 @@ if __name__ == "__main__":
         train_dataset = StyleT2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
     else:
         train_dataset = StyleI2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
-
-    optimizer = torch.optim.Adam([
-            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
-            {'params': [model.prompt], 'lr': args.prompt_lr}])
 
     train_loader = DataLoader(dataset=train_dataset,
                             batch_size=args.batch_size,

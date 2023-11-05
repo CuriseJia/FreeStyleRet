@@ -8,17 +8,19 @@ from PIL import Image
 from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 from tqdm import tqdm
+import time
 
 from prompt_model import Prompt_BLIP
-from BLIP.models import blip_retrieval
+from BLIP.models import blip_retrieval, blip_itm
 from src.utils import getR1Accuary, getR5Accuary
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_BLIP test.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_BLIP or Origin_BLIP test.')
 
     # project settings
-    parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
+    parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
+    parser.add_argument('--prompt_resume', default='', type=str, help='load prompt model checkpoint from given path')
     parser.add_argument('--device', default='cuda:0')
 
     # data settings
@@ -89,8 +91,12 @@ if __name__ == "__main__":
     
     if args.model == 'prompt':
         model = Prompt_BLIP(args)
+        model.load_state_dict(torch.load(args.prompt_resume))
     else:
-        model = blip_retrieval(pretrained=args.resume, image_size=224, vit='large', vit_grad_ckpt=True, vit_ckpt_layer=10)
+        if args.type == 'style2image':
+            model = blip_retrieval(pretrained=args.origin_resume, image_size=224, vit='large', vit_grad_ckpt=True, vit_ckpt_layer=10)
+        else:
+            model = blip_itm(pretrained=args.origin_resume, image_size=224, vit='large', vit_grad_ckpt=True, vit_ckpt_layer=10)
 
     model.eval()
     model.to(args.device)
@@ -115,7 +121,12 @@ if __name__ == "__main__":
             ori_images = load_image(ori_image, 224, args.device, args.batch_size)
             sketch_images = load_image(sketch_image, 224, args.device, args.batch_size)
 
+            t1 = time.time()
+
             prob = S2IRetrieval(args, model, ori_images, sketch_images)
+
+            t2 = time.time()
+            print('inference a batch costs {}ms'.format((t2-t1)*1000))
 
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
@@ -132,7 +143,12 @@ if __name__ == "__main__":
 
             ori_images = load_image(ori_image, 224, args.device, args.batch_size)
 
+            t1 = time.time()
+
             prob = T2IRetrieval(args, model, ori_images, text_list)
+
+            t2 = time.time()
+            print('inference a batch costs {}ms'.format((t2-t1)*1000))
 
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))

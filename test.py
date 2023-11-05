@@ -27,9 +27,11 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=24)
 
     # model settings
-    parser.add_argument('--prompt', type=str, default='ShallowPrompt', help='ShallowPrompt or DeepPrompt')
-    parser.add_argument('--n_prompts', type=int, default=4)
-    parser.add_argument('--prompt_dim', type=int, default=1024)
+    parser.add_argument('--prompt', type=str, default='DeepPrompt', help='ShallowPrompt or DeepPrompt')
+    parser.add_argument('--gram_prompts', type=int, default=4)
+    parser.add_argument('--gram_prompt_dim', type=int, default=1024)
+    parser.add_argument('--style_prompts', type=int, default=4)
+    parser.add_argument('--style_prompt_dim', type=int, default=1024)
 
     args = parser.parse_args()
     return args
