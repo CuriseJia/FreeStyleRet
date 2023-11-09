@@ -47,7 +47,7 @@ def eval(args, model, tokenizer, dataloader):
     r1 = []
     r5 = []
 
-    if args.type == 'image2text':
+    if args.type == 'text2image':
         for data in enumerate(tqdm(dataloader)):
             t1 = time.time()
 

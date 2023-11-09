@@ -20,12 +20,16 @@ def freeze_all_but_bn(m):
             m.bias.requires_grad_(False)
 
 
-def select_style_prompt(x, cluster):
-    score=[]
-    for i in range(cluster.shape[0]):
-        score.append(1-spatial.distance.cosine(x.squeeze(0).cpu(), cluster[i].cpu().squeeze(0)))
-    index = np.argsort(score, axis=0)
-    return cluster[index[-1]]
+def select_style_prompt(input, cluster):
+    
+    input = input.view(input.shape[0], -1)
+    input_temp = input / torch.norm(input, dim=-1, keepdim=True)
+    cluster_temp = cluster / torch.norm(cluster, dim=-1, keepdim=True)
+    sim = torch.mm(input_temp, cluster_temp.T)
+    sim_prob = F.softmax(sim, dim=1)
+    feature = torch.mm(sim_prob, cluster)
+
+    return feature
 
 
 class ShallowStyleRetrieval(nn.Module):
@@ -111,10 +115,14 @@ class ShallowStyleRetrieval(nn.Module):
         return prompt_feature
     
 
-    def _get_style_prompt(self):
-        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(4, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
-        feature = self.style_patch(feature).view(4, 256)
-        feature = self.style_linear(feature)
+    def _get_style_prompt(self, input):
+        style_feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 256, 256).float().to(self.args.device)    # (4, 256, 256)
+        gram_feature = self._get_features(input, self.gram_encoder)
+        embed = self.gram_patch(gram_feature['conv3_1'])
+        n, c, h, w = embed.shape
+        gram = embed.view(n, c, -1)
+        gram = torch.bmm(gram, gram.transpose(1, 2))
+        feature = select_style_prompt(gram, style_feature)  # (b, 1024)
 
         return feature
     
@@ -267,11 +275,13 @@ class DeepStyleRetrieval(nn.Module):
     
 
     def _get_style_prompt(self, input):
-        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
-        input = self._get_features(input, self.gram_encoder)
-        feature = select_style_prompt(input['conv3_1'].view(self.args.batch_size, -1), feature.view(4, 1605632)).unsqueeze(0)       # (1, 1605632)
-        feature = self.style_patch(feature.view(self.args.batch_size, 128, 112, 112)).view(1, 256)
-        feature = self.style_linear(feature).repeat(4,1)
+        style_feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 256, 256).float().to(self.args.device)    # (4, 256, 256)
+        gram_feature = self._get_features(input, self.gram_encoder)
+        embed = self.gram_patch(gram_feature['conv3_1'])
+        n, c, h, w = embed.shape
+        gram = embed.view(n, c, -1)
+        gram = torch.bmm(gram, gram.transpose(1, 2))
+        feature = select_style_prompt(gram, style_feature)  # (b, 1024)
 
         return feature
 
