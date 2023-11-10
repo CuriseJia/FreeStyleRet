@@ -21,7 +21,6 @@ def freeze_all_but_bn(m):
 
 
 def select_style_prompt(input, cluster):
-    
     input = input.view(input.shape[0], -1)
     input_temp = input / torch.norm(input, dim=-1, keepdim=True)
     cluster_temp = cluster / torch.norm(cluster, dim=-1, keepdim=True)
@@ -131,7 +130,9 @@ class ShallowStyleRetrieval(nn.Module):
     
 
     def _visual_forward(self, x):
-        input = x
+        gram_prompt = self._get_gram_prompt(x)
+        style_prompt = self._get_style_prompt(x)
+
         x = self.visual.conv1(x)  # shape = [*, width, grid, grid]
         x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
@@ -146,11 +147,9 @@ class ShallowStyleRetrieval(nn.Module):
         x = self.visual.patch_dropout(x)
         x = self.visual.ln_pre(x)
 
-        self.gram_prompt.parameter = self._get_gram_prompt(input)
-
         if self.args.prompt_location == 'Shallow':
 
-            x = torch.cat([x[:, 0, :].unsqueeze(1), self.gram_prompt.expand(x.shape[0],-1,-1), x[:, 1:, :]], dim=1)
+            x = torch.cat([x[:, 0, :].unsqueeze(1), style_prompt, x[:, 1:, :]], dim=1)
 
             x = x.permute(1, 0, 2)  # NLD -> LND
             x = self.visual.transformer(x)
@@ -162,7 +161,7 @@ class ShallowStyleRetrieval(nn.Module):
             for r in range(len(self.transformer.resblocks)):
                 if r == len(self.transformer.resblocks)-1:
                     x = torch.cat([x[0, :, :].unsqueeze(0), 
-                                self.gram_prompt.expand(self.args.batch_size,-1,-1).permute(1, 0, 2), 
+                                gram_prompt.permute(1, 0, 2), 
                                 x[1:, :, :]], dim=0)
                 x = self.transformer.resblocks[r](x)
             x = x.permute(1, 0, 2)  # LND -> NLD
@@ -278,16 +277,21 @@ class DeepStyleRetrieval(nn.Module):
     
 
     def _get_style_prompt(self, input):
-        # feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
-        style_feature = torch.tensor(torch.randn(4, 256, 256))
+        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        # style_feature = torch.tensor(torch.randn(4, 256, 256))
+        style_feature = self.gram_patch(feature)
+        n, c, h, w = style_feature.shape    # (b, 256, 7, 7)
+        style_feature = style_feature.view(n, c, -1)  # (b*256, 49)
+        style_feature = torch.bmm(style_feature, style_feature.transpose(1, 2))
+        
         gram = self._get_features(input, self.gram_encoder)
         embed = self.gram_patch(gram['conv3_1'])
         n, c, h, w = embed.shape
         gram = embed.view(n, c, -1)  # (b*256, 49)
         gram = torch.bmm(gram, gram.transpose(1, 2))
-        feature = select_style_prompt(gram, style_feature)       # (b, 65536)
+        feature = select_style_prompt(gram, style_feature.view(self.args.style_prompts, -1))       # (b, 65536)
         feature = self.style_patch(feature.view(self.args.batch_size, 256, 16, 16)).view(self.args.batch_size, 256)
-        feature = self.style_linear(feature).unsqueeze(1).repeat(1,4,1)
+        feature = self.style_linear(feature).unsqueeze(1).repeat(1, self.args.style_prompts, 1)
 
         return feature
 

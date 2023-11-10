@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from prompt_model import Prompt_BLIP, Prompt_CLIP, Prompt_ImageBind
+from prompt_model import Prompt_BLIP, Prompt_CLIP, Prompt_ImageBind, VPT_Shallow
 from src.dataset.data import StyleI2IDataset, StyleT2IDataset
 from src.utils.utils import setup_seed, save_loss
 
@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument('--output_dir', default='output/')
     parser.add_argument('--out_path', default='origin-sketch-loss.jpg')
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
+    parser.add_argument('--origin_resume', default='', type=str, help='load checkpoints from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
@@ -135,8 +136,8 @@ if __name__ == "__main__":
             {'params': model.openclip.parameters(), 'lr': args.ln_lr},
             {'params': [model.prompt], 'lr': args.prompt_lr}])
         if args.resume:
-            model.openclip.load_state_dict(torch.load(args.resume))
-            print('success load ckpt model {}'.format(args.resume))
+            model.openclip.load_state_dict(torch.load(args.origin_resume))
+            print('success load ckpt model {}'.format(args.origin_resume))
     elif args.model == 'BLIP':
         model = Prompt_BLIP(args).to(device)
         optimizer = torch.optim.Adam([
@@ -148,8 +149,16 @@ if __name__ == "__main__":
             {'params': model.imagebind.parameters(), 'lr': args.ln_lr},
             {'params': [model.prompt], 'lr': args.prompt_lr}])
         if args.resume:
-            model.imagebind.load_state_dict(torch.load(args.resume))
-            print('success load ckpt model {}'.format(args.resume))
+            model.imagebind.load_state_dict(torch.load(args.origin_resume))
+            print('success load ckpt model {}'.format(args.origin_resume))
+    else:
+        model = VPT_Shallow(args).to(device)
+        optimizer = torch.optim.Adam([
+            {'params': model.openclip.parameters(), 'lr': args.ln_lr},
+            {'params': [model.prompt], 'lr': args.prompt_lr}])
+        if args.resume:
+            model.openclip.load_state_dict(torch.load(args.origin_resume))
+            print('success load ckpt model {}'.format(args.origin_resume))
 
     if args.type == 'text2image':
         train_dataset = StyleT2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)

@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from src.models import ShallowStyleRetrieval, DeepStyleRetrieval
+from src.models import ShallowStyleRetrieval, DeepStyleRetrieval, BLIP_Retrieval
 from src.dataset import StyleI2IDataset, StyleT2IDataset
 from src.utils import setup_seed, save_loss
 
@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument('--output_dir', default='output/')
     parser.add_argument('--out_path', default='origin-sketch-loss.jpg')
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
+    parser.add_argument('--origin_resume', default='model_large_retrieval_coco.pth', type=str, help='load checkpoints from given path')
     parser.add_argument('--gram_encoder_path', default='pretrained/vgg_normalised.pth', type=str, help='load vgg from given path')
     parser.add_argument('--style_cluster_path', default='pretrained/style_cluster.npy', type=str, help='load style prompt from given npy')
     parser.add_argument('--device', default='cuda:0')

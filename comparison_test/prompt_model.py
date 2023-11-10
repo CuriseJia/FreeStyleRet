@@ -110,7 +110,7 @@ class Prompt_CLIP(nn.Module):
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
         # Prompt Token
-        self.img_prompt = nn.Parameter(torch.randn(
+        self.prompt = nn.Parameter(torch.randn(
             self.args.n_prompts, self.args.prompt_dim))
         # loss
         self.triplet_loss = nn.TripletMarginWithDistanceLoss(
@@ -121,8 +121,73 @@ class Prompt_CLIP(nn.Module):
     def forward(self, data, dtype='image'):
         if dtype == 'image': 
             feat = self.openclip.encode_image(
-                data + self.img_prompt.expand(data.shape[0], -1, -1).view(
+                data + self.prompt.expand(data.shape[0], -1, -1).view(
                     data.shape[0],data.shape[1],data.shape[2],data.shape[3]))
+            
+        else:
+            text = self.tokenizer(data).to(self.args.device)
+            feat = self.openclip.encode_text(text)
+        return feat
+    
+
+    def get_loss(self, image_feature, pair_feature, negative_feature, optimizer):
+        loss = self.triplet_loss(image_feature, pair_feature, negative_feature)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        return loss.detach().cpu().numpy()
+    
+
+class VPT_Shallow(nn.Module):
+    def __init__(self, model_args):
+        super(VPT_Shallow, self).__init__()
+        self.args = model_args
+        self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14')
+        self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
+        self.openclip.apply(freeze_all_but_bn)
+        # Prompt Token
+        self.prompt = nn.Parameter(torch.randn(
+            self.args.n_prompts, self.args.prompt_dim))
+        # loss
+        self.triplet_loss = nn.TripletMarginWithDistanceLoss(
+            distance_function=lambda x, y: 1.0-F.cosine_similarity(x, y), 
+            margin=1)
+    
+
+    def _visual_forward(self, x):
+
+        x = self.visual.conv1(x)  # shape = [*, width, grid, grid]
+        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+
+        # class embeddings and positional embeddings
+        x = torch.cat(
+            [self.visual.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device),
+             x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+        x = x + self.visual.positional_embedding.to(x.dtype)
+
+        # a patch_dropout of 0. would mean it is disabled and this function would do nothing but return what was passed in
+        x = self.visual.patch_dropout(x)
+        x = self.visual.ln_pre(x)
+
+        x = torch.cat([x[:, 0, :].unsqueeze(1), self.prompt.expand(self.args.batch_size, -1, -1), x[:, 1:, :]], dim=1)
+
+        x = x.permute(1, 0, 2)  # NLD -> LND
+        x = self.visual.transformer(x)
+        x = x.permute(1, 0, 2)  # LND -> NLD
+
+        pooled, tokens = self.visual._global_pool(x)
+        pooled = self.visual.ln_post(pooled)
+
+        if self.visual.proj is not None:
+            pooled = pooled @ self.visual.proj
+        
+        return pooled
+
+
+    def forward(self, data, dtype='image'):
+        if dtype == 'image': 
+            feat = self._visual_forward(data)
             
         else:
             text = self.tokenizer(data).to(self.args.device)
