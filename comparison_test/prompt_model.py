@@ -6,7 +6,7 @@ from open_clip.factory import image_transform
 import sys
 
 from ImageBind.imagebind import imagebind_model, data, ModalityType
-
+from vpt.src.models.vit_backbones.vit import CONFIGS, Transformer, VisionTransformer, np2th
 from BLIP.models.blip_retrieval import blip_retrieval
 
 
@@ -36,17 +36,17 @@ class Prompt_ImageBind(nn.Module):
         self.pre_process_val = image_transform(224, False, image_mean, image_std)
 
     
-    def forward(self, data, dtype='image'):
+    def forward(self, x, dtype='image'):
         if dtype == 'image':
-            data = data + self.prompt.expand(data.shape[0], -1, -1).view(
-                    data.shape[0],data.shape[1],data.shape[2],data.shape[3])
-            input = {ModalityType.VISION: data}
+            x = x + self.prompt.expand(x.shape[0], -1, -1).view(
+                    x.shape[0],x.shape[1],x.shape[2],x.shape[3])
+            input = {ModalityType.VISION: x}
             feat = self.imagebind(input)
 
             return feat[ModalityType.VISION]
 
         else:
-            input = {ModalityType.TEXT: data.load_and_transform_text(data, self.args.device)}
+            input = {ModalityType.TEXT: data.load_and_transform_text(x, self.args.device)}
             feat = self.imagebind(input)
 
             return feat[ModalityType.TEXT]

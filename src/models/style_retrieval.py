@@ -116,13 +116,16 @@ class ShallowStyleRetrieval(nn.Module):
     
 
     def _get_style_prompt(self, input):
-        style_feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 256, 256).float().to(self.args.device)    # (4, 256, 256)
-        gram_feature = self._get_features(input, self.gram_encoder)
-        embed = self.gram_patch(gram_feature['conv3_1'])
+        # feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        style_feature = torch.tensor(torch.randn(4, 256, 256))
+        gram = self._get_features(input, self.gram_encoder)
+        embed = self.gram_patch(gram['conv3_1'])
         n, c, h, w = embed.shape
-        gram = embed.view(n, c, -1)
+        gram = embed.view(n, c, -1)  # (b*256, 49)
         gram = torch.bmm(gram, gram.transpose(1, 2))
-        feature = select_style_prompt(gram, style_feature)  # (b, 1024)
+        feature = select_style_prompt(gram, style_feature)       # (b, 65536)
+        feature = self.style_patch(feature.view(self.args.batch_size, 256, 16, 16)).view(self.args.batch_size, 256)
+        feature = self.style_linear(feature).unsqueeze(1).repeat(1,4,1)
 
         return feature
     
@@ -275,13 +278,16 @@ class DeepStyleRetrieval(nn.Module):
     
 
     def _get_style_prompt(self, input):
-        style_feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 256, 256).float().to(self.args.device)    # (4, 256, 256)
-        gram_feature = self._get_features(input, self.gram_encoder)
-        embed = self.gram_patch(gram_feature['conv3_1'])
+        # feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        style_feature = torch.tensor(torch.randn(4, 256, 256))
+        gram = self._get_features(input, self.gram_encoder)
+        embed = self.gram_patch(gram['conv3_1'])
         n, c, h, w = embed.shape
-        gram = embed.view(n, c, -1)
+        gram = embed.view(n, c, -1)  # (b*256, 49)
         gram = torch.bmm(gram, gram.transpose(1, 2))
-        feature = select_style_prompt(gram, style_feature)  # (b, 1024)
+        feature = select_style_prompt(gram, style_feature)       # (b, 65536)
+        feature = self.style_patch(feature.view(self.args.batch_size, 256, 16, 16)).view(self.args.batch_size, 256)
+        feature = self.style_linear(feature).unsqueeze(1).repeat(1,4,1)
 
         return feature
 
