@@ -6,7 +6,6 @@ from open_clip.factory import image_transform
 import sys
 
 from ImageBind.imagebind import imagebind_model, data, ModalityType
-from vpt.src.models.vit_backbones.vit import CONFIGS, Transformer, VisionTransformer, np2th
 from BLIP.models.blip_retrieval import blip_retrieval
 
 
@@ -145,6 +144,8 @@ class VPT_Shallow(nn.Module):
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14')
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
         self.openclip.apply(freeze_all_but_bn)
+        self.visual = self.openclip.visual
+        self.transformer = self.visual.transformer
         # Prompt Token
         self.prompt = nn.Parameter(torch.randn(
             self.args.n_prompts, self.args.prompt_dim))

@@ -79,8 +79,12 @@ def S2IRetrieval(args, model, ori_images, pair_images):
 
 
 def T2IRetrieval(args, model, ori_images, text_caption):
-
-    prob = model(ori_images, text_caption, match_head='itc')
+    if args.model == 'BLIP':
+        prob = model(ori_images, text_caption, match_head='itc')
+    else:
+        text_feat = model(text_caption, mode='text')
+        img_feat = model(ori_images, mode='image')
+        prob = torch.softmax(text_feat.view(args.batch_size, -1) @ img_feat.view(args.batch_size, -1).permute(1, 0), dim=-1)
 
     return prob
 

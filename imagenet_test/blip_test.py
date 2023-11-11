@@ -45,9 +45,12 @@ def S2IRetrieval(args, model, ori_images, pair_images):
     return prob
 
 
+
 def T2IRetrieval(args, model, ori_images, text_caption):
 
-    prob = model(ori_images, text_caption, match_head='itc')
+    text_feat = model(text_caption, mode='text')
+    img_feat = model(ori_images, mode='image')
+    prob = torch.softmax(text_feat.view(args.batch_size, -1) @ img_feat.view(args.batch_size, -1).permute(1, 0), dim=-1)
 
     return prob
 
@@ -80,14 +83,13 @@ if __name__ == "__main__":
     
     if args.type == 'text2image':
         for data in enumerate(tqdm(test_loader)):
-            pass
-            # caption = tokenizer(data[1][0]).to(device, non_blocking=True)
-            # image = data[1][1].to(device, non_blocking=True)
+            caption = data[1][0]
+            image = data[1][1].to(args.device, non_blocking=True)
 
-            # prob = T2IRetrieval(args, model, ori_images, sketch_images)
+            prob = T2IRetrieval(args, model, image, caption)
 
-            # r1.append(getR1Accuary(prob))
-            # r5.append(getR5Accuary(prob))
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
 
     else:
         for data in enumerate(tqdm(test_loader)):
