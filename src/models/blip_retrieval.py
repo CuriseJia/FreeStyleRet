@@ -78,8 +78,7 @@ class BLIP_Retrieval(nn.Module):
                     '19': 'conv4_1', 
                     '21': 'conv4_2', 
                     '28': 'conv5_1',
-                    '31': 'conv5_2'
-                    }  
+                    '31': 'conv5_2'}  
         features = {}
         x = image
         for name, layer in model._modules.items():

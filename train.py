@@ -163,8 +163,7 @@ if __name__ == "__main__":
                             pin_memory=True,
                             prefetch_factor=16,
                             shuffle=False,
-                            drop_last=True
-                            )
+                            drop_last=True)
 
     loss, epochs = train(args, model, device, train_loader, optimizer)
 

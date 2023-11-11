@@ -1,26 +1,21 @@
 import argparse
 from tqdm import tqdm
-import time
 import torch
-import open_clip
+import sys
+import time
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from prompt_model import VPT_Shallow
 from src.dataset.data import T2ITestDataset, I2ITestDataset
 from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary
-from prompt_model import Prompt_CLIP
-
-
-image_mean = (0.48145466, 0.4578275, 0.40821073)
-image_std = (0.26861954, 0.26130258, 0.27577711)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_CLIP or Origin_CLIP test.')
+    parser = argparse.ArgumentParser(description='Parse args for SixModal Prompt Tuning.')
 
     # project settings
-    parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
-    parser.add_argument('--prompt_resume', default='', type=str, help='load prompt model checkpoint from given path')
+    parser.add_argument("--resume", type=str, default='', help='load checkpoints from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
@@ -29,18 +24,17 @@ def parse_args():
     parser.add_argument("--type", type=str, default='style2image', help='choose train test2image or style2image.')
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
 
     # model settings
-    parser.add_argument('--model', type=str, default='prompt', help='prompt-clip or origin_clip.')
-    parser.add_argument('--n_prompts', type=int, default=3)
-    parser.add_argument('--prompt_dim', type=int, default=50176)
+    parser.add_argument('--n_prompts', type=int, default=4)
+    parser.add_argument('--prompt_dim', type=int, default=1024)
 
     args = parser.parse_args()
     return args
 
 
-def eval(args, model, tokenizer, dataloader):
+def eval(args, model, dataloader):
     model.eval()
 
     r1 = []
@@ -48,13 +42,13 @@ def eval(args, model, tokenizer, dataloader):
 
     if args.type == 'text2image':
         for data in enumerate(tqdm(dataloader)):
-            caption = tokenizer(data[1][0]).to(device, non_blocking=True)
-            image = data[1][1].to(device, non_blocking=True)
+            caption = data[1][0]
+            image = data[1][1].to(args.device, non_blocking=True)
 
             t1 = time.time()
 
-            image_feature = model.encode_image(image)
-            text_feature = model.encode_text(caption)
+            image_feature = model(image, mode='image')
+            text_feature = model(caption, mode='text')
 
             image_feature = F.normalize(image_feature, dim=-1)
             text_feature = F.normalize(text_feature, dim=-1)
@@ -69,13 +63,13 @@ def eval(args, model, tokenizer, dataloader):
 
     else:
         for data in enumerate(tqdm(dataloader)):
-            origin_image = data[1][0].to(device, non_blocking=True)
-            retrival_image = data[1][1].to(device, non_blocking=True)
+            origin_image = data[1][0].to(args.device, non_blocking=True)
+            retrival_image = data[1][1].to(args.device, non_blocking=True)
 
             t1 = time.time()
 
-            original_feature = model.encode_image(origin_image)
-            retrival_feature = model.encode_image(retrival_image)
+            original_feature = model(origin_image, mode='image')
+            retrival_feature = model(retrival_image, mode='image')
 
             original_feature = F.normalize(original_feature, dim=-1)
             retrival_feature = F.normalize(retrival_feature, dim=-1)
@@ -99,18 +93,16 @@ if __name__ == "__main__":
     setup_seed(args.seed)
     device = torch.device(args.device)
     
-    if args.model == 'prompt':
-        model = Prompt_CLIP(args)
-        model.load_state_dict(torch.load(args.prompt_resume))
-        tokenizer = model.tokenizer
-    else:
-        model, _, pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14', pretrained=args.origin_resume, device=device)
-        tokenizer = open_clip.get_tokenizer('ViT-L-14')
+    model = VPT_Shallow(args)
+    model.to(device)
+    model.load_state_dict(torch.load(args.resume))
+    pre_process_val = model.pre_process_val
 
     if args.type == 'text2image':
         test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
     else:
         test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
+
 
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=args.batch_size,
@@ -121,4 +113,4 @@ if __name__ == "__main__":
                             drop_last=True
                             )
 
-    eval(args, model, tokenizer, test_loader)
+    eval(args, model, test_loader)
