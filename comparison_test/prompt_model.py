@@ -137,9 +137,9 @@ class Prompt_CLIP(nn.Module):
         return loss.detach().cpu().numpy()
     
 
-class VPT_Shallow(nn.Module):
+class VPT_Deep(nn.Module):
     def __init__(self, model_args):
-        super(VPT_Shallow, self).__init__()
+        super(VPT_Deep, self).__init__()
         self.args = model_args
         self.openclip, self.pre_process_train, self.pre_process_val = open_clip.create_model_and_transforms(model_name='ViT-L-14')
         self.tokenizer = open_clip.get_tokenizer('ViT-L-14')
@@ -171,10 +171,15 @@ class VPT_Shallow(nn.Module):
         x = self.visual.patch_dropout(x)
         x = self.visual.ln_pre(x)
 
-        x = torch.cat([x[:, 0, :].unsqueeze(1), self.prompt.expand(self.args.batch_size, -1, -1), x[:, 1:, :]], dim=1)
-
         x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.visual.transformer(x)
+        for r in range(len(self.transformer.resblocks)):
+            if r == 0:
+                x = torch.cat([x[0, :, :].unsqueeze(0), 
+                            self.prompt.expand(self.args.batch_size, -1, -1).permute(1, 0, 2), 
+                            x[1:, :, :]], dim=0)
+            else:
+                x[1:5, :, :] = self.prompt.expand(self.args.batch_size, -1, -1).permute(1, 0, 2)
+            x = self.transformer.resblocks[r](x)
         x = x.permute(1, 0, 2)  # LND -> NLD
 
         pooled, tokens = self.visual._global_pool(x)

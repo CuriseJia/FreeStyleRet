@@ -25,6 +25,7 @@ def parse_args():
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
+    parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
@@ -89,6 +90,18 @@ def T2IRetrieval(args, model, ori_images, text_caption):
     return prob
 
 
+def X2IRetrieval(args, model, ori_images, pair_images, text_caption):
+    ori_feat = model(ori_images, mode='image')
+    ske_feat =  model(pair_images, mode='image')
+    text_feat = model(text_caption, mode='text')
+
+    prob1 = torch.softmax(ske_feat.view(args.batch_size, -1) @ ori_feat.view(args.batch_size, -1).permute(1, 0), dim=-1)
+    prob2 = torch.softmax(text_feat.view(args.batch_size, -1) @ ori_feat.view(args.batch_size, -1).permute(1, 0), dim=-1)
+    prob = prob1.max(prob2)
+
+    return prob
+
+
 if __name__ == "__main__":
     args = parse_args()
     pair = json.load(open(args.test_json_path, 'r'))
@@ -117,7 +130,7 @@ if __name__ == "__main__":
         if args.type == 'style2image':
             for j in range(args.batch_size):
                 image_path = os.path.join(args.test_dataset_path, 'images/'+pair[i*args.batch_size+j]['image'])
-                sketch_path = os.path.join(args.test_dataset_path, 'sketch/'+pair[i*args.batch_size+j]['image'])
+                sketch_path = os.path.join(args.test_dataset_path, '{}/'.format(args.style)+pair[i*args.batch_size+j]['image'])
 
                 ori_image.append(image_path)
                 sketch_image.append(sketch_path)
@@ -135,7 +148,7 @@ if __name__ == "__main__":
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
 
-        else:
+        elif args.type == 'text2image':
             for j in range(args.batch_size):
                 caption_path = os.path.join(args.test_dataset_path, 'text/'+pair[i*args.batch_size+j]['caption'])
                 image_path = os.path.join(args.test_dataset_path, 'images/'+pair[i*args.batch_size+j]['image'])
@@ -153,6 +166,26 @@ if __name__ == "__main__":
 
             t2 = time.time()
             print('inference a batch costs {}ms'.format((t2-t1)*1000))
+
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
+        
+        else:
+            for j in range(args.batch_size):
+                caption_path = os.path.join(args.test_dataset_path, 'text/'+pair[i*args.batch_size+j]['caption'])
+                image_path = os.path.join(args.test_dataset_path, 'images/'+pair[i*args.batch_size+j]['image'])
+                sketch_path = os.path.join(args.test_dataset_path, '{}/'.format(args.style)+pair[i*args.batch_size+j]['image'])
+
+                f = open(caption_path, 'r')
+                caption = f.readline().replace('\n', '')
+                text_list.append(caption)
+                ori_image.append(image_path)
+                sketch_image.append(sketch_path)
+
+            ori_images = load_image(ori_image, 224, args.device, args.batch_size)
+            sketch_images = load_image(sketch_image, 224, args.device, args.batch_size)
+
+            prob = X2IRetrieval(args, model, ori_images, sketch_images, text_list)
 
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))

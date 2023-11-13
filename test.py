@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from src.models import ShallowStyleRetrieval, DeepStyleRetrieval, BLIP_Retrieval
-from src.dataset.data import T2ITestDataset, I2ITestDataset
+from src.dataset.data import T2ITestDataset, I2ITestDataset, X2ITestDataset
 from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
 
 
@@ -23,6 +23,7 @@ def parse_args():
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
+    parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
     parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
     parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
@@ -60,7 +61,7 @@ def eval(args, model, dataloader):
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
 
-    else:
+    elif args.type == 'style2image':
         for data in enumerate(tqdm(dataloader)):
             origin_image = data[1][0].to(device, non_blocking=True)
             retrival_image = data[1][1].to(device, non_blocking=True)
@@ -75,6 +76,28 @@ def eval(args, model, dataloader):
 
             r1.append(getR1Accuary(prob))
             r5.append(getR5Accuary(prob))
+    
+    else:
+        for data in enumerate(tqdm(dataloader)):
+            caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
+            origin_image = data[1][1].to(device, non_blocking=True)
+            retrival_image = data[1][2].to(device, non_blocking=True)
+
+            text_feature = model(caption, dtype='text')
+            original_feature = model(origin_image, dtype='image')
+            retrival_feature = model(retrival_image, dtype='image')
+
+            text_feature = F.normalize(text_feature, dim=-1)
+            original_feature = F.normalize(original_feature, dim=-1)
+            retrival_feature = F.normalize(retrival_feature, dim=-1)
+
+            prob1 = torch.softmax((100.0 * text_feature @ original_feature.T), dim=-1)
+            prob2 = prob = torch.softmax((100.0 * retrival_feature @ original_feature.T), dim=-1)
+            prob = prob1.max(prob2)
+            
+            r1.append(getR1Accuary(prob))
+            r5.append(getR5Accuary(prob))
+
 
     resr1 = sum(r1)/len(r1)
     resr5 = sum(r5)/len(r5)
@@ -96,8 +119,10 @@ if __name__ == "__main__":
     
     if args.type == 'text2image':
         test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+    elif args.type == 'style2image':
+        test_dataset = I2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, model.pre_process_val)
     else:
-        test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, model.pre_process_val)
+        test_dataset = X2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, model.pre_process_val)
 
     test_loader = DataLoader(dataset=test_dataset, 
                             batch_size=args.batch_size,
