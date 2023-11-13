@@ -19,7 +19,7 @@ image_std = (0.26861954, 0.26130258, 0.27577711)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_ImageBind or Origin_ImageBind test.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_ImageBind or Origin_ImageBind test on DSR dataset.')
 
     # project settings
     parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
@@ -29,8 +29,9 @@ def parse_args():
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
-    parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
+    parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
+    parser.add_argument("--test_dataset_path", type=str, default='DSR/')
+    parser.add_argument("--test_json_path", type=str, default='DSR/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
 
     # model settings
@@ -135,7 +136,7 @@ if __name__ == "__main__":
             if args.type == 'style2image':
                 for j in range(args.batch_size):
                     image_path = os.path.join(args.test_dataset_path, 'images/'+pair[i*args.batch_size+j]['image'])
-                    sketch_path = os.path.join(args.test_dataset_path, 'sketch/'+pair[i*args.batch_size+j]['image'])
+                    sketch_path = os.path.join(args.test_dataset_path, '{}/'.format(args.style)+pair[i*args.batch_size+j]['image'])
                     ori_image.append(image_path)
                     sketch_image.append(sketch_path)
                 

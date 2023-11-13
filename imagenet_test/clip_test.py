@@ -12,7 +12,7 @@ from src.utils.utils import getR1Accuary, getR5Accuary
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_Model test on ImageNet-X Dataset.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_CLIP test on ImageNet-X Dataset.')
 
     # project settings
     parser.add_argument('--resume', default='', type=str, help='load model checkpoint from given path')

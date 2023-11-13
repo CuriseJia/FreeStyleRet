@@ -10,7 +10,7 @@ from src.utils.utils import setup_seed, save_loss
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Multi-Modal Model Finetune.')
+    parser = argparse.ArgumentParser(description='Parse args for Pretrained Multi-Modal Model Finetune.')
 
     # project settings
     parser.add_argument('--output_dir', default='output/')

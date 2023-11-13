@@ -26,10 +26,10 @@ def parse_args():
     parser.add_argument('--num_workers', default=6, type=int)
 
     # data settings
-    parser.add_argument("--type", type=str, default='style2image', help='choose train test2image or style2image.')
+    parser.add_argument("--type", type=str, default='style2image', help='choose train text2image, style2image or x2image.')
     parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
-    parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
+    parser.add_argument("--test_dataset_path", type=str, default='DSR/')
+    parser.add_argument("--test_json_path", type=str, default='DSR/test.json')
     parser.add_argument("--batch_size", type=int, default=16)
 
     # model settings
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     if args.type == 'text2image':
         test_dataset = T2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
     elif args.type == 'style2image':
-        test_dataset = I2ITestDataset(args.test_dataset_path,  args.test_json_path, pre_process_val)
+        test_dataset = I2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, pre_process_val)
     else:
         test_dataset = X2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, pre_process_val)
 

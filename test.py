@@ -6,11 +6,11 @@ from torch.utils.data import DataLoader
 
 from src.models import ShallowStyleRetrieval, DeepStyleRetrieval, BLIP_Retrieval
 from src.dataset.data import T2ITestDataset, I2ITestDataset, X2ITestDataset
-from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary, getR10Accuary
+from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Multi-Style-Retrieval.')
+    parser = argparse.ArgumentParser(description='Parse args for FreeStyleRet Training.')
 
     # project settings
     parser.add_argument('--resume', default='', type=str, help='load checkpoints from given path')
@@ -24,8 +24,8 @@ def parse_args():
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
     parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
-    parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
+    parser.add_argument("--test_dataset_path", type=str, default='DSR/')
+    parser.add_argument("--test_json_path", type=str, default='DSR/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
 
     # model settings

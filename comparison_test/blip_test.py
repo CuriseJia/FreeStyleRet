@@ -16,7 +16,7 @@ from src.utils import getR1Accuary, getR5Accuary
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Parse args for Prompt_BLIP or Origin_BLIP test.')
+    parser = argparse.ArgumentParser(description='Parse args for Prompt_BLIP or Origin_BLIP test on DSR dataset.')
 
     # project settings
     parser.add_argument('--origin_resume', default='', type=str, help='load origin model checkpoint from given path')
@@ -24,10 +24,10 @@ def parse_args():
     parser.add_argument('--device', default='cuda:0')
 
     # data settings
-    parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
+    parser.add_argument("--type", type=str, default='style2image', help='choose train text2image, style2image or x2image.')
     parser.add_argument("--style", type=str, default='sketch', help='choose sketch, art or mosaic.')
-    parser.add_argument("--test_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--test_json_path", type=str, default='fscoco/test.json')
+    parser.add_argument("--test_dataset_path", type=str, default='DSR/')
+    parser.add_argument("--test_json_path", type=str, default='DSR/test.json')
     parser.add_argument("--batch_size", type=int, default=24)
 
     # model settings
