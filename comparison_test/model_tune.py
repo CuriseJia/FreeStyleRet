@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from prompt_model import Prompt_BLIP, Prompt_CLIP, Prompt_ImageBind, VPT_Shallow
+from prompt_model import Prompt_BLIP, Prompt_CLIP, Prompt_ImageBind, VPT_Deep
 from src.dataset.data import StyleI2IDataset, StyleT2IDataset
 from src.utils.utils import setup_seed, save_loss
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
             model.imagebind.load_state_dict(torch.load(args.origin_resume))
             print('success load ckpt model {}'.format(args.origin_resume))
     else:
-        model = VPT_Shallow(args).to(device)
+        model = VPT_Deep(args).to(device)
         optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.ln_lr},
             {'params': [model.prompt], 'lr': args.prompt_lr}])

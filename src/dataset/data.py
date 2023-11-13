@@ -2,8 +2,7 @@ import os
 import json
 import numpy as np
 from PIL import Image
-
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 class StyleT2IDataset(Dataset):
@@ -89,7 +88,8 @@ class T2ITestDataset(Dataset):
     
 
 class I2ITestDataset(Dataset):
-    def __init__(self, root_path, json_path, image_transform):
+    def __init__(self, style, root_path, json_path, image_transform):
+        self.style = style
         self.root_path = root_path
         self.dataset = json.load(open(json_path,'r'))
         self.image_transform = image_transform
@@ -101,15 +101,34 @@ class I2ITestDataset(Dataset):
     
     def __getitem__(self, index):
         ori_path = os.path.join(self.root_path, 'images/'+self.dataset[index]['image'])
-        rand = np.random.randint(1,4)
-        if rand == 1:
-            pair_path = os.path.join(self.root_path, 'sketch/'+self.dataset[index]['image'])
-        elif rand == 2:
-            pair_path = os.path.join(self.root_path, 'art/'+self.dataset[index]['image'])
-        elif rand == 3:
-            pair_path = os.path.join(self.root_path, 'mosaic/'+self.dataset[index]['image'])
+        pair_path = os.path.join(self.root_path, '{}/'.format(self.style)+self.dataset[index]['image'])
         
         ori_image = self.image_transform(Image.open(ori_path))
         pair_image = self.image_transform(Image.open(pair_path))
 
         return [ori_image, pair_image]
+    
+
+class X2ITestDataset(Dataset):
+    def __init__(self, style, root_path, json_path, image_transform):
+        self.style = style
+        self.root_path = root_path
+        self.dataset = json.load(open(json_path,'r'))
+        self.image_transform = image_transform
+    
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    
+    def __getitem__(self, index):
+        caption_path = os.path.join(self.root_path, 'text/'+self.dataset[index]['caption'])
+        ori_path = os.path.join(self.root_path, 'images/'+self.dataset[index]['image'])
+        pair_path = os.path.join(self.root_path, '{}/'.format(self.style)+self.dataset[index]['image'])
+        
+        f = open(caption_path, 'r')
+        caption = f.readline().replace('\n', '')
+        ori_image = self.image_transform(Image.open(ori_path))
+        pair_image = self.image_transform(Image.open(pair_path))
+
+        return [caption, ori_image, pair_image]

@@ -4,10 +4,9 @@ import sys
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import open_clip
 
 from data import S2ITestDataset, T2ITestDataset, M2ITestDataset
-from comparison_test import Prompt_CLIP
+from src.models import BLIP_Retrieval
 from src.utils.utils import getR1Accuary, getR5Accuary
 
 
@@ -16,22 +15,26 @@ def parse_args():
 
     # project settings
     parser.add_argument('--resume', default='', type=str, help='load model checkpoint from given path')
+    parser.add_argument('--origin_resume', default='', type=str, help='load model checkpoint from given path')
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
+    parser.add_argument('--gram_encoder_path', default='/public/home/jiayanhao/fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
+    parser.add_argument('--style_prompt_path', default='/public/home/jiayanhao/fscoco/style_cluster.npy', type=str, help='load vgg from given path')
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train test2image or style2image.')
-    parser.add_argument("--model", type=str, default='CLIP', help='choose train test2image or style2image.')
     parser.add_argument("--root_json_path", type=str, default='imagenet/test.json')
     parser.add_argument("--other_json_path", type=str, default='imagenet/test.json')
     parser.add_argument("--root_file_path", type=str, default='imagenet/')
     parser.add_argument("--other_file_path", type=str, default='imagenet-s/')
-    parser.add_argument("--batch_size", type=int, default=24)
+    parser.add_argument("--batch_size", type=int, default=16)
 
     # model settings
-    parser.add_argument('--n_prompts', type=int, default=3)
-    parser.add_argument('--prompt_dim', type=int, default=50176)
+    parser.add_argument('--gram_prompts', type=int, default=4)
+    parser.add_argument('--gram_prompt_dim', type=int, default=1024)
+    parser.add_argument('--style_prompts', type=int, default=4)
+    parser.add_argument('--style_prompt_dim', type=int, default=1024)
 
     args = parser.parse_args()
     return args
@@ -39,12 +42,8 @@ def parse_args():
 
 def S2IRetrieval(args, model, ori_images, pair_images):
 
-    if args.model == 'Prompt_CLIP':
-        ori_feat = model(ori_images, mode='image')
-        ske_feat = model(pair_images, mode='image')
-    else:
-        ori_feat = model.encode_image(ori_images)
-        ske_feat = model.encode_image(pair_images)
+    ori_feat = model(ori_images, dtype='image')
+    ske_feat = model(pair_images, dtype='image')  
 
     prob = torch.softmax(ske_feat.view(args.batch_size, -1) @ ori_feat.view(args.batch_size, -1).permute(1, 0), dim=-1)
 
@@ -52,13 +51,8 @@ def S2IRetrieval(args, model, ori_images, pair_images):
 
 
 def T2IRetrieval(args, model, ori_images, text_caption):
-
-    if args.model == 'Prompt_CLIP':
-        ori_feat = model(ori_images, mode='image')
-        ske_feat = model(text_caption, mode='text')
-    else:
-        ori_feat = model.encode_image(ori_images)
-        ske_feat = model.encode_text(text_caption)
+    ori_feat = model(ori_images, dtype='image')
+    ske_feat = model(text_caption, dtype='text')
 
     prob = torch.softmax(ske_feat @ ori_feat.T, dim=-1)
 
@@ -68,12 +62,9 @@ def T2IRetrieval(args, model, ori_images, text_caption):
 if __name__ == "__main__":
     args = parse_args()
     
-    if args.model == 'CLIP':
-        model, _, _ = open_clip.create_model_and_transforms(model_name='ViT-L-14')
-        tokenizer = open_clip.get_tokenizer('ViT-L-14')
-    else:
-        model = Prompt_CLIP(args)
+    model = BLIP_Retrieval(args)
     model.load_state_dict(torch.load(args.resume))
+    model.eval()
     model.to(args.device)
 
     if args.type == 'text2image':
@@ -96,11 +87,8 @@ if __name__ == "__main__":
     
     if args.type == 'text2image':
         for data in enumerate(tqdm(test_loader)):
-            if args.model == 'CLIP':
-                caption = tokenizer(data[1][1]).to(args.device, non_blocking=True)
-            else:
-                caption = data[1][0]
-            image = data[1][1].to(args.device, non_blocking=True)
+            caption = data[1][1]
+            image = data[1][0].to(args.device, non_blocking=True)
 
             prob = T2IRetrieval(args, model, image, caption)
 
