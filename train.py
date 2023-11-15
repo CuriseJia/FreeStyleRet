@@ -47,7 +47,7 @@ def parse_args():
 
 
 
-def train(args, model, device, dataloader, optimizer):
+def train(args, model, dataloader, optimizer):
     model.train()
 
     best_loss = 10000000
@@ -61,10 +61,12 @@ def train(args, model, device, dataloader, optimizer):
             temp_loss = []
 
             for data in enumerate(tqdm(dataloader)): 
-
-                caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
-                image = data[1][1].to(device, non_blocking=True)
-                negative_image = data[1][2].to(device, non_blocking=True)
+                if args.prompt == 'BLIP_Retrieval':
+                    caption = data[1][0]
+                else:
+                    caption = model.tokenizer(data[1][0]).to(args.device, non_blocking=True)
+                image = data[1][1].to(args.device, non_blocking=True)
+                negative_image = data[1][2].to(args.device, non_blocking=True)
 
                 text_feature = model(caption, dtype='text')
                 image_feature = model(image, dtype='image')
@@ -98,10 +100,9 @@ def train(args, model, device, dataloader, optimizer):
             temp_loss = []
             
             for data in enumerate(tqdm(dataloader)):
-
-                original_image = data[1][0].to(device, non_blocking=True)
-                retrival_image = data[1][1].to(device, non_blocking=True)
-                negative_image = data[1][2].to(device, non_blocking=True)
+                original_image = data[1][0].to(args.device, non_blocking=True)
+                retrival_image = data[1][1].to(args.device, non_blocking=True)
+                negative_image = data[1][2].to(args.device, non_blocking=True)
 
                 original_feature = model(original_image, dtype='image')
                 retrival_feature = model(retrival_image, dtype='image')
@@ -136,19 +137,27 @@ def train(args, model, device, dataloader, optimizer):
 if __name__ == "__main__":
     args = parse_args()
     setup_seed(args.seed)
-    device = torch.device(args.device)
 
     if args.prompt == 'ShallowPrompt':
         model = ShallowStyleRetrieval(args)
-    else:
-        model = DeepStyleRetrieval(args)
-        
-    optimizer = torch.optim.Adam([
+        optimizer = torch.optim.Adam([
             {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
             {'params': [model.style_prompt], 'lr': args.style_prompt_lr},
             {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
+    elif args.prompt == 'DeepPrompt':
+        model = DeepStyleRetrieval(args)
+        optimizer = torch.optim.Adam([
+            {'params': model.openclip.parameters(), 'lr': args.clip_ln_lr},
+            {'params': [model.style_prompt], 'lr': args.style_prompt_lr},
+            {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
+    else:
+        model = BLIP_Retrieval(args)
+        optimizer = torch.optim.Adam([
+                {'params': model.blip.parameters(), 'lr': args.clip_ln_lr},
+                {'params': [model.style_prompt], 'lr': args.style_prompt_lr},
+                {'params': [model.gram_prompt], 'lr': args.gram_prompt_lr}])
         
-    model = model.to(device)
+    model = model.to(args.device)
     if args.resume:
         model.load_state_dict(torch.load(args.resume))
 
@@ -157,14 +166,9 @@ if __name__ == "__main__":
     else:
         train_dataset = StyleI2IDataset(args.train_dataset_path,  args.train_json_path, model.pre_process_train)
 
-    train_loader = DataLoader(dataset=train_dataset,
-                            batch_size=args.batch_size,
-                            num_workers=args.num_workers,
-                            pin_memory=True,
-                            prefetch_factor=16,
-                            shuffle=False,
-                            drop_last=True)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                            pin_memory=True, prefetch_factor=4, shuffle=False, drop_last=True)
 
-    loss, epochs = train(args, model, device, train_loader, optimizer)
+    loss, epochs = train(args, model, train_loader, optimizer)
 
     save_loss(loss, epochs, args.out_path)

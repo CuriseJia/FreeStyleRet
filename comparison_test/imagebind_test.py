@@ -8,7 +8,7 @@ from tqdm import tqdm
 from open_clip.factory import image_transform
 from torch.utils.data import DataLoader
 
-from src.utils import getR1Accuary, getR5Accuary
+from src.utils import setup_seed, getR1Accuary, getR5Accuary
 from src.dataset import I2ITestDataset, T2ITestDataset
 from ImageBind.imagebind import data, ModalityType, imagebind_model
 from prompt_model import Prompt_ImageBind
@@ -87,6 +87,7 @@ def T2IRetrieval(args, model, ori_feat, pair_feat):
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_seed(args.seed)
     pair = json.load(open(args.test_json_path, 'r'))
 
     if args.model == 'prompt':

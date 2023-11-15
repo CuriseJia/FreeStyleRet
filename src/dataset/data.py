@@ -84,7 +84,7 @@ class T2ITestDataset(Dataset):
         caption = f.readline().replace('\n', '')
         pair_image = self.image_transform(Image.open(image_path))
 
-        return [caption, pair_image]
+        return [caption, pair_image, index]
     
 
 class I2ITestDataset(Dataset):
@@ -106,7 +106,7 @@ class I2ITestDataset(Dataset):
         ori_image = self.image_transform(Image.open(ori_path))
         pair_image = self.image_transform(Image.open(pair_path))
 
-        return [ori_image, pair_image]
+        return [ori_image, pair_image, index]
     
 
 class X2ITestDataset(Dataset):
@@ -131,4 +131,29 @@ class X2ITestDataset(Dataset):
         ori_image = self.image_transform(Image.open(ori_path))
         pair_image = self.image_transform(Image.open(pair_path))
 
-        return [caption, ori_image, pair_image]
+        return [caption, ori_image, pair_image, index]
+    
+
+class VisualizationDataset(Dataset):
+    def __init__(self, root_path, json_path, image_transform):
+        self.root_path = root_path
+        self.dataset = json.load(open(json_path,'r'))
+        self.image_transform = image_transform
+
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    
+    def __getitem__(self, index):
+        ori_path = os.path.join(self.root_path, 'images/'+self.dataset[index]['image'])
+        sketch_path = os.path.join(self.root_path, 'sketch/'+self.dataset[index]['image'])
+        art_path = os.path.join(self.root_path, 'art/'+self.dataset[index]['image'])
+        mosaic_path = os.path.join(self.root_path, 'mosaic/'+self.dataset[index]['image'])
+        
+        ori_image = self.image_transform(Image.open(ori_path))
+        sketch_image = self.image_transform(Image.open(sketch_path))
+        art_image = self.image_transform(Image.open(art_path))
+        mosaic_image = self.image_transform(Image.open(mosaic_path))
+
+        return [ori_image, sketch_image, art_image, mosaic_image, index]

@@ -8,7 +8,7 @@ import open_clip
 
 from data import S2ITestDataset, T2ITestDataset, M2ITestDataset
 from comparison_test import Prompt_CLIP
-from src.utils.utils import getR1Accuary, getR5Accuary
+from src.utils import setup_seed, getR1Accuary, getR5Accuary
 
 
 def parse_args():
@@ -67,6 +67,7 @@ def T2IRetrieval(args, model, ori_images, text_caption):
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_seed(args.seed)
     
     if args.model == 'CLIP':
         model, _, _ = open_clip.create_model_and_transforms(model_name='ViT-L-14')
@@ -83,13 +84,8 @@ if __name__ == "__main__":
     else:
         test_dataset = M2ITestDataset(args)
 
-    test_loader = DataLoader(dataset=test_dataset, 
-                            batch_size=args.batch_size,
-                            num_workers=args.num_workers,
-                            pin_memory=True,
-                            prefetch_factor=16,
-                            shuffle=False,
-                            drop_last=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                            pin_memory=True, prefetch_factor=16, shuffle=False, drop_last=True)
 
     r1 = []
     r5 = []

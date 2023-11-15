@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from src.dataset.data import T2ITestDataset, I2ITestDataset, X2ITestDataset
-from src.utils.utils import setup_seed, getR1Accuary, getR5Accuary
+from src.utils import setup_seed, getR1Accuary, getR5Accuary
 from prompt_model import Prompt_CLIP
 
 
@@ -137,13 +137,7 @@ if __name__ == "__main__":
     else:
         test_dataset = X2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, pre_process_val)
 
-    test_loader = DataLoader(dataset=test_dataset, 
-                            batch_size=args.batch_size,
-                            num_workers=args.num_workers,
-                            pin_memory=True,
-                            prefetch_factor=16,
-                            shuffle=False,
-                            drop_last=True
-                            )
+    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                            pin_memory=True, prefetch_factor=16, shuffle=False, drop_last=True)
 
     eval(args, model, tokenizer, test_loader)

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from data import S2ITestDataset, T2ITestDataset, M2ITestDataset
 from src.models import DeepStyleRetrieval
-from src.utils.utils import getR1Accuary, getR5Accuary
+from src.utils import setup_seed, getR1Accuary, getR5Accuary
 
 
 def parse_args():
@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument('--device', default='cuda:0')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--num_workers', default=6, type=int)
-    parser.add_argument('--gram_encoder_path', default='fscoco/vgg_normalised.pth', type=str, help='load vgg from given path')
-    parser.add_argument('--style_prompt_path', default='fscoco/style_cluster.npy', type=str, help='load vgg from given path')
+    parser.add_argument('--gram_encoder_path', default='pretrained/vgg_normalised.pth', type=str, help='load vgg from given path')
+    parser.add_argument('--style_prompt_path', default='pretrained/style_cluster.npy', type=str, help='load vgg from given path')
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train test2image or style2image.')
@@ -60,6 +60,7 @@ def T2IRetrieval(args, model, ori_images, text_caption):
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_seed(args.seed)
     
     model = DeepStyleRetrieval(args)
     model.load_state_dict(torch.load(args.resume))
@@ -73,13 +74,8 @@ if __name__ == "__main__":
     else:
         test_dataset = M2ITestDataset(args)
 
-    test_loader = DataLoader(dataset=test_dataset, 
-                            batch_size=args.batch_size,
-                            num_workers=args.num_workers,
-                            pin_memory=True,
-                            prefetch_factor=16,
-                            shuffle=False,
-                            drop_last=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                            pin_memory=True, prefetch_factor=16, shuffle=False, drop_last=True)
 
     r1 = []
     r5 = []

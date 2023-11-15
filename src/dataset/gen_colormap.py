@@ -13,7 +13,7 @@ def mosaic2(image_path, out_path, step=16):
 
 
 if __name__ == '__main__':
-    root_path = 'fscoco/'
+    root_path = 'DSR/'
     folderlist = os.listdir(root_path+'images')
     if os.path.exists(root_path + 'mosaic/'):
         pass

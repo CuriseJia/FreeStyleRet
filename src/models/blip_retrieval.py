@@ -6,7 +6,7 @@ from open_clip.factory import image_transform
 import sys
 
 from BLIP.models.blip_retrieval import blip_retrieval
-from .vgg import VGG
+from models import VGG
 
 
 image_mean = (0.48145466, 0.4578275, 0.40821073)
@@ -103,7 +103,7 @@ class BLIP_Retrieval(nn.Module):
     
 
     def _get_style_prompt(self, input):
-        feature = torch.from_numpy(np.load(self.args.style_prompt_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
+        feature = torch.from_numpy(np.load(self.args.style_cluster_path)).view(self.args.style_prompts, 128, 112, 112).float().to(self.args.device)    # (4, 1605632)
         # style_feature = torch.tensor(torch.randn(4, 256, 256))
         style_feature = self.gram_patch(feature)
         n, c, h, w = style_feature.shape    # (b, 256, 7, 7)

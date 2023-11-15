@@ -12,7 +12,7 @@ import time
 
 from prompt_model import Prompt_BLIP
 from BLIP.models import blip_retrieval, blip_itm
-from src.utils import getR1Accuary, getR5Accuary
+from src.utils import setup_seed, getR1Accuary, getR5Accuary
 
 
 def parse_args():
@@ -104,6 +104,7 @@ def X2IRetrieval(args, model, ori_images, pair_images, text_caption):
 
 if __name__ == "__main__":
     args = parse_args()
+    setup_seed(args.seed)
     pair = json.load(open(args.test_json_path, 'r'))
     
     if args.model == 'prompt':
