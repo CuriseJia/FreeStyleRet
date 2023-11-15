@@ -82,7 +82,7 @@ def get_features(image, model, layers=None):
     
     return features
 
-img = Image.open('Multi-Style-Retrieval/test.jpg')
+img = Image.open('FreeStyleRet/test.jpg')
 
 # torch.permute(img, (2,0,1))
 # print(img.shape)

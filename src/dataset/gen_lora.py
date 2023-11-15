@@ -16,7 +16,7 @@ def parse_args():
     # path settings
     parser.add_argument('--model_path', default='AnimateDiff/models/StableDiffusion/stable-diffusion-v1-5')
     parser.add_argument('--lora_path', default='AnimateDiff/download_bashscripts/models/DreamBooth_LoRA/toonyou_beta3.safetensors')
-    parser.add_argument('--root_path', default='fscoco/')
+    parser.add_argument('--root_path', default='DSR/')
 
 
 

@@ -4,9 +4,9 @@ import json
 from tqdm import tqdm
 from PIL import Image
 
-path = 'fscoco/'
+path = 'DSR/'
 
-out = 'fscoco/dataset.json'
+out = 'DSR/dataset.json'
 
 temp = []
 

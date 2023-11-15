@@ -47,8 +47,11 @@ def eval(args, model, dataloader):
 
     if args.type == 'text2image':
         for data in enumerate(tqdm(dataloader)):
-            caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
-            image = data[1][1].to(device, non_blocking=True)
+            if args.prompt == 'BLIP_Retrieval':
+                caption = data[1][0]
+            else:
+                caption = model.tokenizer(data[1][0]).to(args.device, non_blocking=True)
+            image = data[1][1].to(args.device, non_blocking=True)
 
             image_feature = model(image, dtype='image')
             text_feature = model(caption, dtype='text')
@@ -63,8 +66,8 @@ def eval(args, model, dataloader):
 
     elif args.type == 'style2image':
         for data in enumerate(tqdm(dataloader)):
-            origin_image = data[1][0].to(device, non_blocking=True)
-            retrival_image = data[1][1].to(device, non_blocking=True)
+            origin_image = data[1][0].to(args.device, non_blocking=True)
+            retrival_image = data[1][1].to(args.device, non_blocking=True)
 
             original_feature = model(origin_image, dtype='image')
             retrival_feature = model(retrival_image, dtype='image')
@@ -79,9 +82,12 @@ def eval(args, model, dataloader):
     
     else:
         for data in enumerate(tqdm(dataloader)):
-            caption = model.tokenizer(data[1][0]).to(device, non_blocking=True)
-            origin_image = data[1][1].to(device, non_blocking=True)
-            retrival_image = data[1][2].to(device, non_blocking=True)
+            if args.prompt == 'BLIP_Retrieval':
+                caption = data[1][0]
+            else:
+                caption = model.tokenizer(data[1][0]).to(args.device, non_blocking=True)
+            origin_image = data[1][1].to(args.device, non_blocking=True)
+            retrival_image = data[1][2].to(args.device, non_blocking=True)
 
             text_feature = model(caption, dtype='text')
             original_feature = model(origin_image, dtype='image')
@@ -108,13 +114,14 @@ def eval(args, model, dataloader):
 if __name__ == "__main__":
     args = parse_args()
     setup_seed(args.seed)
-    device = torch.device(args.device)
 
     if args.prompt == 'ShallowPrompt':
         model = ShallowStyleRetrieval(args)
-    else:
+    elif args.prompt == 'DeepPrompt':
         model = DeepStyleRetrieval(args)
-    model = model.to(device)
+    else:
+        model = BLIP_Retrieval(args)
+    model = model.to(args.device)
     model.load_state_dict(torch.load(args.resume))
     
     if args.type == 'text2image':
@@ -124,12 +131,7 @@ if __name__ == "__main__":
     else:
         test_dataset = X2ITestDataset(args.style, args.test_dataset_path,  args.test_json_path, model.pre_process_val)
 
-    test_loader = DataLoader(dataset=test_dataset, 
-                            batch_size=args.batch_size,
-                            num_workers=args.num_workers,
-                            pin_memory=True,
-                            prefetch_factor=16,
-                            shuffle=False,
-                            drop_last=True)
+    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
+                            pin_memory=True, prefetch_factor=16, shuffle=False, drop_last=True)
 
     eval(args, model, test_loader)

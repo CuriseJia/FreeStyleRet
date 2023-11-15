@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from prompt_model import Prompt_BLIP, Prompt_CLIP, Prompt_ImageBind, VPT_Deep
 from src.dataset.data import StyleI2IDataset, StyleT2IDataset
-from src.utils.utils import setup_seed, save_loss
+from src.utils import setup_seed, save_loss
 
 
 def parse_args():
@@ -23,8 +23,8 @@ def parse_args():
 
     # data settings
     parser.add_argument("--type", type=str, default='style2image', help='choose train text2image or style2image.')
-    parser.add_argument("--train_dataset_path", type=str, default='fscoco/')
-    parser.add_argument("--train_json_path", type=str, default='fscoco/train.json')
+    parser.add_argument("--train_dataset_path", type=str, default='DSR/')
+    parser.add_argument("--train_json_path", type=str, default='DSR/train.json')
     parser.add_argument("--batch_size", type=int, default=12)
     parser.add_argument("--epochs", type=int, default=10)
 
