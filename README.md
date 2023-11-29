@@ -43,6 +43,13 @@ FreestyleRet achieves **state-of-the-art (SOTA) performance on the DSR dataset a
 <img src="img/result.jpg" width=100%>
 </p>
 
+## 🤗 Visualization
+Each sample has three images to compare the retrieval performance between our FreestyleRet and the BLIP baseline on the DSR dataset.
+The left images are the queries randomly selected from different styles. The middle and the right images are the retrieval results of our FreestyleRet-BLIP model and the original BLIP model, respectively.
+<p align="left">
+<img src="img/case_study.jpg" width=100%>
+</p>
+
 
 ## 🛠️ Requirements and Installation
 * Python >= 3.9
