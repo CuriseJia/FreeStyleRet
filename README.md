@@ -59,8 +59,8 @@ pip install -r requirements.txt
 ```
 
 
-## 💥 DSR dataset
-The datasets is coming soon.
+## 💥 DSR dataset & FreestyleRet Checkpoints
+The datasets and Checkpoints are coming soon.
 
 ## 🗝️ Training & Validating
 The training & validating instruction is in [train.py](train.py) and [test.py](test.py).
