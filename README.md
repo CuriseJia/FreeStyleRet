@@ -7,8 +7,7 @@
 
 
 <h5 align="center">
-
-[![arXiv](https://arxiv.org/abs/2312.02428)]()
+[![arXiv](https://img.shields.io/badge/Arxiv-2310.01852-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2312.02428)
 [![License](https://img.shields.io/badge/Code%20License-MIT-yellow)](https://github.com/YanhaoJia/FreeStyleRet/blob/main/LICENSE)
 [![Data License](https://img.shields.io/badge/Dataset%20license-CC--BY--NC%204.0-orange)](https://github.com/YanhaoJia/FreeStyleRet/blob/main/DATASET_LICENSE)
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FYanhaoJia%2FFreeStyleRet&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) <br>
