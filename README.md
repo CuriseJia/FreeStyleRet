@@ -76,6 +76,9 @@ The training & validating instruction is in [train.py](train.py) and [test.py](t
 * The dataset of this project is released under the CC-BY-NC 4.0 license as found in the [DATASET_LICENSE](https://github.com/YanhaoJia/FreeStyleRet/blob/main/DATASET_LICENSE) file. 
 
 ## ✏️ Citation
+If you find our paper and code useful in your research, please consider giving a star :star: and citation :pencil:.
+
+```BibTeX
 @misc{li2023freestyleret,
       title={FreestyleRet: Retrieving Images from Style-Diversified Queries}, 
       author={Hao Li and Curise Jia and Peng Jin and Zesen Cheng and Kehan Li and Jialu Sui and Chang Liu and Li Yuan},
@@ -84,3 +87,4 @@ The training & validating instruction is in [train.py](train.py) and [test.py](t
       archivePrefix={arXiv},
       primaryClass={cs.CV}
 }
+```
