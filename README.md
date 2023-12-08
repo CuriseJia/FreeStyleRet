@@ -8,13 +8,10 @@
 
 <h5 align="center">
 
-[![hf_space](https://img.shields.io/badge/🤗-Open%20In%20Spaces-blue.svg)]()
-[![arXiv](https://img.shields.io/badge/Arxiv-2310.01852-b31b1b.svg?logo=arXiv)]()
+[![arXiv](https://arxiv.org/abs/2312.02428)]()
 [![License](https://img.shields.io/badge/Code%20License-MIT-yellow)](https://github.com/YanhaoJia/FreeStyleRet/blob/main/LICENSE)
 [![Data License](https://img.shields.io/badge/Dataset%20license-CC--BY--NC%204.0-orange)](https://github.com/YanhaoJia/FreeStyleRet/blob/main/DATASET_LICENSE)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FYanhaoJia%2FFreeStyleRet&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
-[![GitHub issues](https://img.shields.io/github/issues/YanhaoJia/FreeStyleRet?color=critical&label=Issues)](https://github.com/YanhaoJia/FreeStyleRet/issues?q=is%3Aopen+is%3Aissue)
-[![GitHub closed issues](https://img.shields.io/github/issues-closed/YanhaoJia/FreeStyleRet?color=success&label=Issues)](https://github.com/YanhaoJia/FreeStyleRet/issues?q=is%3Aissue+is%3Aclosed)  <br>
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FYanhaoJia%2FFreeStyleRet&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com) <br>
 
 </h5>
 
@@ -80,4 +77,11 @@ The training & validating instruction is in [train.py](train.py) and [test.py](t
 * The dataset of this project is released under the CC-BY-NC 4.0 license as found in the [DATASET_LICENSE](https://github.com/YanhaoJia/FreeStyleRet/blob/main/DATASET_LICENSE) file. 
 
 ## ✏️ Citation
-Our paper will be presented at arxiv soon!
+@misc{li2023freestyleret,
+      title={FreestyleRet: Retrieving Images from Style-Diversified Queries}, 
+      author={Hao Li and Curise Jia and Peng Jin and Zesen Cheng and Kehan Li and Jialu Sui and Chang Liu and Li Yuan},
+      year={2023},
+      eprint={2312.02428},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
