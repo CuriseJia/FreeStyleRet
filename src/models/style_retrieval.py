@@ -180,16 +180,6 @@ class ShallowStyleRetrieval(nn.Module):
         #     return pooled, tokens
         
         return pooled
-        
-
-    def forward(self, data, dtype='image'):
-        if dtype == 'image': 
-            feat = self._visual_forward(data)
-
-        elif dtype == 'text':
-            feat = self.openclip.encode_text(data)
-
-        return feat
 
 
 class DeepStyleRetrieval(nn.Module):

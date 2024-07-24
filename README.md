@@ -16,6 +16,9 @@
 
 
 ## 📰 News
+* **[2024.7.24]** Our Diverse-Style Retrieval Dataset is released at [this](https://huggingface.co/datasets/Curise/FreeStyleRet-DSR).
+* **[2024.7.24]** Add a new retreival task evaluator tool with R1 and R5.
+* **[2024.7.1]** Our FreestyleRet has been accepted by ECCV 2024!
 * **[2023.11.29]**  Code is available now! Welcome to **watch** 👀 this repository for the latest updates.
 
 ## 😮 Highlights
