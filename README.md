@@ -63,7 +63,7 @@ pip install -r requirements.txt
 
 
 ## 💥 DSR dataset & FreestyleRet Checkpoints
-The datasets and Checkpoints are coming soon.
+Both [dataset](https://huggingface.co/datasets/Curise/FreeStyleRet-DSR) and [model checkpoints](https://huggingface.co/Curise/FreestyleRet) has been released.
 
 ## 🗝️ Training & Validating
 The training & validating instruction is in [train.py](train.py) and [test.py](test.py).
