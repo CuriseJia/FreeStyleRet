@@ -24,10 +24,10 @@
 ## 😮 Highlights
 
 ### 💡 High performance, plug-and-play, and lightweight
-FreestyleRet is **the first multi-style retrieval model** and focus on the precision search field. You can transfer our gram-based style block to **any other pre-trained model** with only **28M** trainable parameter.
+FreestyleRet is **the first multi-style retrieval model** and focus on the precision search field. You can transfer our gram-based style block to **any other pre-trained model** with only **28M** trainable parameters.
 
 ### ⚡️ A multi-style, fully aligned and gained dataset
-We propose the precision search task and its fisrt corresponding dataset.
+We propose the precision search task and its first corresponding dataset.
 Following figure shows our proposed Diverse-Style Retrieval Dataset(**DSR**), which includes five styles: origin, sketch, art, mosaic, and text.
 
 <p align="center">
